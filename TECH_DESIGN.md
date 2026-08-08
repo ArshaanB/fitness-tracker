@@ -22,7 +22,7 @@ users            (Supabase auth)
 exercises        id, user_id, name, kind        -- kind: barbell | dumbbell | machine | bodyweight
 templates        id, user_id, name, position, archived_at
 template_items   id, template_id, exercise_id, position,
-                 superset_group,                -- nullable int; same value = same superset
+                 superset_group,                -- nullable int; unused in v1 (supersets deferred), kept for later
                  rest_seconds, target_set_count
 workouts         id, user_id, template_id?, started_at, finished_at?, notes
 workout_items    id, workout_id, exercise_id, position, superset_group, rest_seconds

@@ -9,7 +9,6 @@
     --pg-card: #FFFFFF;
     --pg-accent: #0A5CFF;
   }
-  :root:not([data-theme="light"]) { }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --pg-bg: #10151C;
@@ -69,7 +68,9 @@
   /* ---------- Phone frame ---------- */
   .phone-wrap { flex: 0 0 auto; }
   .phone {
-    width: 393px; height: 780px; background: #F2F4F7; border-radius: 44px;
+    width: 393px; height: 780px;
+    background: linear-gradient(180deg, #EBF1F9 0%, #F3F6FB 40%, #F5F7FB 100%);
+    border-radius: 44px;
     border: 1px solid #D8DDE5;
     box-shadow: 0 24px 60px rgba(16, 26, 44, 0.16), 0 2px 8px rgba(16, 26, 44, 0.08);
     overflow: hidden; position: relative;
@@ -90,76 +91,79 @@
 
   .navbar {
     flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 18px 12px;
+    padding: 8px 18px 10px;
   }
-  .nav-title { display: flex; flex-direction: column; gap: 1px; }
+  .nav-title { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
   .nav-title b { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
-  .nav-title span { font-size: 13px; color: #6B7688; font-variant-numeric: tabular-nums; }
+  .elapsed-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(10, 92, 255, 0.09); color: #0A5CFF;
+    font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums;
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .elapsed-chip::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: #0A5CFF;
+  }
   .finish-btn {
     background: #0A5CFF; color: #fff; border: none; border-radius: 999px;
     font-size: 15px; font-weight: 600; padding: 9px 18px; cursor: pointer;
     font-family: inherit;
+    box-shadow: 0 4px 12px rgba(10, 92, 255, 0.3);
   }
   .finish-btn:active { opacity: 0.8; }
+
+  .workout-progress {
+    flex: 0 0 auto; height: 4px; margin: 0 18px 10px; border-radius: 2px;
+    background: #DFE6F0; overflow: hidden;
+  }
+  .workout-progress i {
+    display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, #0A5CFF, #4D8DFF); border-radius: 2px;
+    transition: width 0.35s ease;
+  }
 
   .screen-scroll { flex: 1 1 auto; overflow-y: auto; padding: 2px 14px 120px; scrollbar-width: none; }
   .screen-scroll::-webkit-scrollbar { display: none; }
 
   /* Exercise cards */
   .exercise {
-    background: #fff; border-radius: 16px; margin-bottom: 10px;
-    border: 1px solid #E7EAF0; overflow: hidden;
+    background: #fff; border-radius: 18px; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 8px 22px rgba(16, 38, 74, 0.07);
+    overflow: hidden;
   }
   .exercise-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; cursor: pointer; -webkit-user-select: none; user-select: none;
   }
   .exercise-head .name { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
-  .exercise-head .meta { font-size: 13px; color: #6B7688; font-variant-numeric: tabular-nums; }
+  .exercise-head .meta { font-size: 13px; color: #6B7688; font-variant-numeric: tabular-nums; margin-top: 1px; }
   .exercise-head .meta .done-count { color: #2DBE5F; font-weight: 600; }
   .chev { color: #B4BCC8; font-size: 13px; margin-left: 10px; transition: transform 0.2s; }
   .exercise.open .chev { transform: rotate(90deg); }
   .exercise-body { display: none; padding: 0 12px 12px; }
   .exercise.open .exercise-body { display: block; }
 
-  /* Superset bracket */
-  .superset { position: relative; padding-left: 14px; margin-bottom: 10px; }
-  .superset::before {
-    content: ""; position: absolute; left: 2px; top: 10px; bottom: 10px; width: 3px;
-    border-radius: 2px; background: #0A5CFF;
-  }
-  .superset-label {
-    font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; color: #0A5CFF;
-    text-transform: uppercase; margin: 0 0 6px 2px;
-  }
-  .superset .exercise { margin-bottom: 6px; }
-  .superset .exercise:last-child { margin-bottom: 0; }
-
   /* Set table */
   .set-cols {
-    display: grid; grid-template-columns: 34px 1fr 84px 64px 40px 40px;
+    display: grid; grid-template-columns: 34px 1fr 84px 64px 40px 44px;
     gap: 6px; align-items: center; padding: 4px 4px 8px;
     font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #98A1AF;
   }
   .set-row {
-    display: grid; grid-template-columns: 34px 1fr 84px 64px 40px 40px;
-    gap: 6px; align-items: center; padding: 5px 4px; border-radius: 10px;
+    display: grid; grid-template-columns: 34px 1fr 84px 64px 40px 44px;
+    gap: 6px; align-items: center; padding: 5px 4px; border-radius: 12px;
   }
-  .set-row.done { background: #F0FAF3; }
+  .set-row.done { background: #EDF9F1; }
   .set-num { font-size: 15px; font-weight: 600; color: #6B7688; text-align: center; font-variant-numeric: tabular-nums; }
-  .prev { font-size: 14px; color: #98A1AF; font-variant-numeric: tabular-nums; }
+  .prev { font-size: 14px; color: #8B94A3; font-variant-numeric: tabular-nums; }
+  .prev em { font-style: normal; font-size: 12.5px; color: #AEB6C2; margin-left: 7px; }
   .w-input, .r-input {
-    width: 100%; border: none; background: #F2F4F7; border-radius: 9px;
+    width: 100%; border: none; background: #EAEFF7; border-radius: 10px;
     font-size: 17px; font-weight: 650; text-align: center; padding: 8px 2px;
     font-family: inherit; color: #0E1726; font-variant-numeric: tabular-nums;
   }
   .set-row.done .w-input, .set-row.done .r-input { background: transparent; }
   .w-input:focus, .r-input:focus { outline: 2px solid #0A5CFF; outline-offset: 1px; }
-  .w-cell { display: flex; align-items: center; gap: 4px; }
-  .stepper {
-    flex: 0 0 auto; width: 20px; height: 34px; border: none; background: transparent; color: #0A5CFF;
-    font-size: 16px; font-weight: 700; cursor: pointer; padding: 0; font-family: inherit;
-  }
 
   /* Intensity ring */
   .ring {
@@ -169,7 +173,7 @@
   .ring::after {
     content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff;
   }
-  .set-row.done .ring::after { background: #F0FAF3; }
+  .set-row.done .ring::after { background: #EDF9F1; }
   .ring.rainbow {
     background: conic-gradient(#FF453A, #FFB020, #F7E733, #2DBE5F, #38C7D8, #0A5CFF, #9D5CFF, #FF453A);
     animation: ringspin 3.2s linear infinite;
@@ -180,9 +184,10 @@
   }
 
   .check {
-    width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid #D5DAE2;
-    background: #fff; color: transparent; font-size: 15px; cursor: pointer; margin: 0 auto;
+    width: 44px; height: 30px; border-radius: 9px; border: 1.5px solid #D5DAE2;
+    background: #fff; color: #C9CFD9; font-size: 18px; font-weight: 700; cursor: pointer; margin: 0 auto;
     display: flex; align-items: center; justify-content: center; font-family: inherit;
+    line-height: 1; padding: 0;
   }
   .set-row.done .check { background: #2DBE5F; border-color: #2DBE5F; color: #fff; }
 
@@ -194,20 +199,26 @@
   /* Rest timer pill */
   .rest-pill {
     position: absolute; left: 16px; right: 16px; bottom: 20px;
-    background: #0E1726; color: #fff; border-radius: 18px; padding: 12px 16px;
-    display: none; align-items: center; gap: 14px;
+    background: #0E1726; color: #fff; border-radius: 18px; padding: 12px 16px 14px;
+    display: none; align-items: center; gap: 8px;
     box-shadow: 0 10px 30px rgba(14, 23, 38, 0.35);
   }
   .rest-pill.show { display: flex; }
-  .rest-pill .rest-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-  .rest-pill .rest-label { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8B97A6; }
+  .rest-pill .rest-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rest-pill .rest-label { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8B97A6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rest-pill .rest-time { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .rest-bar { position: absolute; left: 16px; right: 16px; bottom: 8px; height: 3px; border-radius: 2px; background: #2A3646; overflow: hidden; }
-  .rest-bar i { display: block; height: 100%; background: #0A5CFF; width: 100%; border-radius: 2px; }
-  .skip-btn {
+  .rest-adj {
     border: none; background: #2A3646; color: #fff; border-radius: 999px;
-    font-size: 13.5px; font-weight: 600; padding: 8px 16px; cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 650; padding: 7px 11px; cursor: pointer; font-family: inherit;
+    font-variant-numeric: tabular-nums; flex: 0 0 auto;
   }
+  .skip-btn {
+    border: none; background: #0A5CFF; color: #fff; border-radius: 999px;
+    font-size: 13.5px; font-weight: 600; padding: 8px 16px; cursor: pointer; font-family: inherit;
+    flex: 0 0 auto;
+  }
+  .rest-bar { position: absolute; left: 16px; right: 16px; bottom: 7px; height: 3px; border-radius: 2px; background: #2A3646; overflow: hidden; }
+  .rest-bar i { display: block; height: 100%; background: #0A5CFF; width: 100%; border-radius: 2px; }
 
   /* Finish sheet */
   .sheet {
@@ -216,13 +227,14 @@
   }
   .sheet.show { display: flex; }
   .sheet-card {
-    background: #F8F9FB; width: 100%; border-radius: 28px 28px 44px 44px; padding: 26px 22px 34px;
+    background: #F5F7FB; width: 100%; border-radius: 28px 28px 44px 44px; padding: 26px 22px 34px;
   }
   .sheet-card h3 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 2px; }
   .sheet-sub { font-size: 13.5px; color: #6B7688; margin: 0 0 18px; }
   .stat-row { display: flex; gap: 10px; margin-bottom: 18px; }
   .stat {
-    flex: 1; background: #fff; border: 1px solid #E7EAF0; border-radius: 14px; padding: 12px 14px;
+    flex: 1; background: #fff; border-radius: 14px; padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 6px 16px rgba(16, 38, 74, 0.06);
   }
   .stat b { display: block; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
   .stat span { font-size: 11.5px; color: #6B7688; }
@@ -230,8 +242,9 @@
     font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #98A1AF; margin: 0 0 8px;
   }
   .pr-row {
-    display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #E7EAF0;
+    display: flex; align-items: center; gap: 12px; background: #fff;
     border-radius: 14px; padding: 12px 14px; position: relative; overflow: hidden; margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 6px 16px rgba(16, 38, 74, 0.06);
   }
   .pr-row .ring { margin: 0; flex: 0 0 auto; }
   .pr-row .pr-text { flex: 1; }
@@ -258,10 +271,10 @@
 </style>
 
 <div class="page">
-  <p class="eyebrow">Fitness Tracker · Design · Mockup 01</p>
+  <p class="eyebrow">Fitness Tracker · Design · Mockup 01 · Rev 2</p>
   <h1>Workout logging</h1>
   <p class="lede">The in-gym screen: hybrid density with the active exercise expanded, previous-session numbers inline, and the intensity ring scoring every set against your best estimated 1RM.</p>
-  <p class="hint"><strong>It's live:</strong> edit the weight or reps on Bench Press set 3 (try the − / + steppers — push it to 235) and watch the ring change. Check a set off to start the rest timer. Tap a collapsed exercise to expand it. Hit <strong>Finish</strong> for the PR moment.</p>
+  <p class="hint"><strong>It's live:</strong> edit the weight or reps on Bench Press set 3 (try 235) and watch the ring change. Check a set off to start the rest timer — nudge it with <strong>−10s / +10s</strong>. Tap a collapsed exercise to expand it. Hit <strong>Finish</strong> for the PR moment.</p>
 
   <div class="stage">
     <div class="phone-wrap">
@@ -272,10 +285,11 @@
         <div class="navbar">
           <div class="nav-title">
             <b>Push Day</b>
-            <span id="elapsed">0:47:12</span>
+            <span class="elapsed-chip" id="elapsed">0:47:12</span>
           </div>
           <button class="finish-btn" id="finishBtn">Finish</button>
         </div>
+        <div class="workout-progress"><i id="progressBar"></i></div>
 
         <div class="screen-scroll">
           <!-- Bench Press — active, expanded -->
@@ -283,48 +297,44 @@
             <div class="exercise-head">
               <div>
                 <div class="name">Bench Press</div>
-                <div class="meta"><span class="done-count">2</span> of 4 sets · rest 3:00</div>
+                <div class="meta"><span class="done-count">2</span> of <span class="total-count">4</span> sets · rest 3:00</div>
               </div>
               <span class="chev">›</span>
             </div>
             <div class="exercise-body">
               <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
 
-              <div class="set-row done" data-w="205" data-r="8">
+              <div class="set-row done">
                 <span class="set-num">1</span>
-                <span class="prev">205 × 8</span>
-                <div class="w-cell"><input class="w-input" value="205" inputmode="decimal" aria-label="Weight set 1"></div>
+                <span class="prev">205<em>8</em></span>
+                <input class="w-input" value="205" inputmode="decimal" aria-label="Weight set 1">
                 <input class="r-input" value="8" inputmode="numeric" aria-label="Reps set 1">
                 <span class="ring"></span>
                 <button class="check" aria-label="Set 1 complete">✓</button>
               </div>
 
-              <div class="set-row done" data-w="215" data-r="8">
+              <div class="set-row done">
                 <span class="set-num">2</span>
-                <span class="prev">215 × 8</span>
-                <div class="w-cell"><input class="w-input" value="215" inputmode="decimal" aria-label="Weight set 2"></div>
+                <span class="prev">215<em>8</em></span>
+                <input class="w-input" value="215" inputmode="decimal" aria-label="Weight set 2">
                 <input class="r-input" value="8" inputmode="numeric" aria-label="Reps set 2">
                 <span class="ring"></span>
                 <button class="check" aria-label="Set 2 complete">✓</button>
               </div>
 
-              <div class="set-row" data-w="225" data-r="8">
+              <div class="set-row">
                 <span class="set-num">3</span>
-                <span class="prev">225 × 7</span>
-                <div class="w-cell">
-                  <button class="stepper" data-d="-5" aria-label="Minus 5 pounds">−</button>
-                  <input class="w-input" value="225" inputmode="decimal" aria-label="Weight set 3">
-                  <button class="stepper" data-d="5" aria-label="Plus 5 pounds">+</button>
-                </div>
+                <span class="prev">225<em>7</em></span>
+                <input class="w-input" value="225" inputmode="decimal" aria-label="Weight set 3">
                 <input class="r-input" value="8" inputmode="numeric" aria-label="Reps set 3">
                 <span class="ring"></span>
                 <button class="check" aria-label="Complete set 3">✓</button>
               </div>
 
-              <div class="set-row" data-w="225" data-r="6">
+              <div class="set-row">
                 <span class="set-num">4</span>
-                <span class="prev">225 × 5</span>
-                <div class="w-cell"><input class="w-input" value="225" inputmode="decimal" aria-label="Weight set 4"></div>
+                <span class="prev">225<em>5</em></span>
+                <input class="w-input" value="225" inputmode="decimal" aria-label="Weight set 4">
                 <input class="r-input" value="6" inputmode="numeric" aria-label="Reps set 4">
                 <span class="ring"></span>
                 <button class="check" aria-label="Complete set 4">✓</button>
@@ -334,68 +344,64 @@
             </div>
           </div>
 
-          <!-- Superset pair -->
-          <div class="superset">
-            <p class="superset-label">Superset</p>
-            <div class="exercise" data-best="106">
-              <div class="exercise-head">
-                <div>
-                  <div class="name">Incline Dumbbell Press</div>
-                  <div class="meta">0 of 3 sets · rest 1:30</div>
-                </div>
-                <span class="chev">›</span>
-              </div>
-              <div class="exercise-body">
-                <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
-                <div class="set-row" data-w="80" data-r="10">
-                  <span class="set-num">1</span>
-                  <span class="prev">80 × 10</span>
-                  <div class="w-cell"><input class="w-input" value="80" inputmode="decimal" aria-label="Incline weight set 1"></div>
-                  <input class="r-input" value="10" inputmode="numeric" aria-label="Incline reps set 1">
-                  <span class="ring"></span>
-                  <button class="check" aria-label="Complete incline set 1">✓</button>
-                </div>
-                <button class="add-set">+ Add set</button>
-              </div>
-            </div>
-            <div class="exercise" data-best="230">
-              <div class="exercise-head">
-                <div>
-                  <div class="name">Chest Fly (Cable)</div>
-                  <div class="meta">0 of 3 sets · rest 1:30</div>
-                </div>
-                <span class="chev">›</span>
-              </div>
-              <div class="exercise-body">
-                <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
-                <div class="set-row" data-w="42.5" data-r="12">
-                  <span class="set-num">1</span>
-                  <span class="prev">42.5 × 12</span>
-                  <div class="w-cell"><input class="w-input" value="42.5" inputmode="decimal" aria-label="Fly weight set 1"></div>
-                  <input class="r-input" value="12" inputmode="numeric" aria-label="Fly reps set 1">
-                  <span class="ring"></span>
-                  <button class="check" aria-label="Complete fly set 1">✓</button>
-                </div>
-                <button class="add-set">+ Add set</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Collapsed exercises -->
-          <div class="exercise" data-best="175">
+          <div class="exercise" data-best="106">
             <div class="exercise-head">
               <div>
-                <div class="name">Overhead Press</div>
-                <div class="meta">0 of 4 sets · rest 2:30</div>
+                <div class="name">Incline Dumbbell Press</div>
+                <div class="meta"><span class="done-count">0</span> of <span class="total-count">3</span> sets · rest 1:30</div>
               </div>
               <span class="chev">›</span>
             </div>
             <div class="exercise-body">
               <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
-              <div class="set-row" data-w="115" data-r="8">
+              <div class="set-row">
                 <span class="set-num">1</span>
-                <span class="prev">115 × 8</span>
-                <div class="w-cell"><input class="w-input" value="115" inputmode="decimal" aria-label="OHP weight set 1"></div>
+                <span class="prev">80<em>10</em></span>
+                <input class="w-input" value="80" inputmode="decimal" aria-label="Incline weight set 1">
+                <input class="r-input" value="10" inputmode="numeric" aria-label="Incline reps set 1">
+                <span class="ring"></span>
+                <button class="check" aria-label="Complete incline set 1">✓</button>
+              </div>
+              <button class="add-set">+ Add set</button>
+            </div>
+          </div>
+
+          <div class="exercise" data-best="230">
+            <div class="exercise-head">
+              <div>
+                <div class="name">Chest Fly (Cable)</div>
+                <div class="meta"><span class="done-count">0</span> of <span class="total-count">3</span> sets · rest 1:30</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="exercise-body">
+              <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+              <div class="set-row">
+                <span class="set-num">1</span>
+                <span class="prev">42.5<em>12</em></span>
+                <input class="w-input" value="42.5" inputmode="decimal" aria-label="Fly weight set 1">
+                <input class="r-input" value="12" inputmode="numeric" aria-label="Fly reps set 1">
+                <span class="ring"></span>
+                <button class="check" aria-label="Complete fly set 1">✓</button>
+              </div>
+              <button class="add-set">+ Add set</button>
+            </div>
+          </div>
+
+          <div class="exercise" data-best="175">
+            <div class="exercise-head">
+              <div>
+                <div class="name">Overhead Press</div>
+                <div class="meta"><span class="done-count">0</span> of <span class="total-count">4</span> sets · rest 2:30</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="exercise-body">
+              <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+              <div class="set-row">
+                <span class="set-num">1</span>
+                <span class="prev">115<em>8</em></span>
+                <input class="w-input" value="115" inputmode="decimal" aria-label="OHP weight set 1">
                 <input class="r-input" value="8" inputmode="numeric" aria-label="OHP reps set 1">
                 <span class="ring"></span>
                 <button class="check" aria-label="Complete OHP set 1">✓</button>
@@ -408,16 +414,16 @@
             <div class="exercise-head">
               <div>
                 <div class="name">Lateral Raise</div>
-                <div class="meta">0 of 3 sets · rest 1:00</div>
+                <div class="meta"><span class="done-count">0</span> of <span class="total-count">3</span> sets · rest 1:00</div>
               </div>
               <span class="chev">›</span>
             </div>
             <div class="exercise-body">
               <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
-              <div class="set-row" data-w="25" data-r="14">
+              <div class="set-row">
                 <span class="set-num">1</span>
-                <span class="prev">25 × 14</span>
-                <div class="w-cell"><input class="w-input" value="25" inputmode="decimal" aria-label="Lateral weight set 1"></div>
+                <span class="prev">25<em>14</em></span>
+                <input class="w-input" value="25" inputmode="decimal" aria-label="Lateral weight set 1">
                 <input class="r-input" value="14" inputmode="numeric" aria-label="Lateral reps set 1">
                 <span class="ring"></span>
                 <button class="check" aria-label="Complete lateral set 1">✓</button>
@@ -433,6 +439,8 @@
             <span class="rest-label">Rest · <span id="restExercise">Bench Press</span></span>
             <span class="rest-time" id="restTime">3:00</span>
           </div>
+          <button class="rest-adj" id="restMinus">−10s</button>
+          <button class="rest-adj" id="restPlus">+10s</button>
           <button class="skip-btn" id="skipBtn">Skip</button>
           <div class="rest-bar"><i id="restBar"></i></div>
         </div>
@@ -485,7 +493,7 @@
       <div class="spec-card">
         <h2>Tokens</h2>
         <div class="swatches">
-          <div class="swatch"><i style="background:#F2F4F7"></i><span>ground</span></div>
+          <div class="swatch"><i style="background:linear-gradient(180deg,#EBF1F9,#F5F7FB)"></i><span>ground</span></div>
           <div class="swatch"><i style="background:#FFFFFF"></i><span>card</span></div>
           <div class="swatch"><i style="background:#0E1726"></i><span>ink</span></div>
           <div class="swatch"><i style="background:#0A5CFF"></i><span>accent</span></div>
@@ -497,8 +505,9 @@
       <div class="spec-card">
         <h2>Notes</h2>
         <div class="legend-row"><div class="legend-text"><span class="legend-label">Hybrid density</span><span class="legend-sub">Active exercise expands; the rest collapse to a one-line summary.</span></div></div>
-        <div class="legend-row"><div class="legend-text"><span class="legend-label">Previous column</span><span class="legend-sub">Last session's set is the target to beat, always inline.</span></div></div>
-        <div class="legend-row"><div class="legend-text"><span class="legend-label">Superset bracket</span><span class="legend-sub">Blue rail groups alternated exercises; rest runs across the pair.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Previous column</span><span class="legend-sub">Weight, then reps in lighter type — last session is the target to beat.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Workout progress</span><span class="legend-sub">Thin bar under the header fills as sets are completed.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Rest adjust</span><span class="legend-sub">−10s / +10s nudge the running timer without leaving the pill.</span></div></div>
       </div>
     </div>
   </div>
@@ -527,18 +536,20 @@
       inp.addEventListener('input', () => updateRing(row)));
   });
 
-  document.querySelectorAll('.stepper').forEach(btn =>
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const row = btn.closest('.set-row');
-      const inp = row.querySelector('.w-input');
-      inp.value = (parseFloat(inp.value) || 0) + parseFloat(btn.dataset.d);
-      updateRing(row);
-    }));
-
   // Accordion
   document.querySelectorAll('.exercise-head').forEach(head =>
     head.addEventListener('click', () => head.closest('.exercise').classList.toggle('open')));
+
+  // Workout progress bar (sum of per-exercise done/total counts)
+  function updateProgress() {
+    let done = 0, total = 0;
+    document.querySelectorAll('.exercise').forEach(ex => {
+      done += parseInt(ex.querySelector('.done-count').textContent) || 0;
+      total += parseInt(ex.querySelector('.total-count').textContent) || 0;
+    });
+    document.getElementById('progressBar').style.width = total ? `${(done / total) * 100}%` : '0';
+  }
+  updateProgress();
 
   // Elapsed timer
   let elapsed = 47 * 60 + 12;
@@ -553,37 +564,51 @@
   const restTime = document.getElementById('restTime');
   const restBar = document.getElementById('restBar');
   const restExercise = document.getElementById('restExercise');
-  let restInterval = null;
+  const rest = { left: 0, total: 0, interval: null };
 
+  function renderRest() {
+    restTime.textContent = `${Math.floor(rest.left / 60)}:${String(rest.left % 60).padStart(2, '0')}`;
+    restBar.style.width = `${Math.min(100, (rest.left / rest.total) * 100)}%`;
+  }
+  function endRest() {
+    clearInterval(rest.interval);
+    pill.classList.remove('show');
+  }
   function startRest(name, seconds) {
-    clearInterval(restInterval);
+    clearInterval(rest.interval);
     restExercise.textContent = name;
-    let left = seconds;
-    const render = () => {
-      restTime.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-      restBar.style.width = `${(left / seconds) * 100}%`;
-    };
-    render();
+    rest.left = seconds;
+    rest.total = seconds;
+    renderRest();
     pill.classList.add('show');
-    restInterval = setInterval(() => {
-      left--;
-      if (left <= 0) { clearInterval(restInterval); pill.classList.remove('show'); return; }
-      render();
+    rest.interval = setInterval(() => {
+      rest.left--;
+      if (rest.left <= 0) { endRest(); return; }
+      renderRest();
     }, 1000);
   }
+  function adjustRest(delta) {
+    if (!pill.classList.contains('show')) return;
+    rest.left = Math.max(0, rest.left + delta);
+    if (rest.left === 0) { endRest(); return; }
+    rest.total = Math.max(rest.total, rest.left);
+    renderRest();
+  }
 
-  document.getElementById('skipBtn').addEventListener('click', () => {
-    clearInterval(restInterval);
-    pill.classList.remove('show');
-  });
+  document.getElementById('skipBtn').addEventListener('click', endRest);
+  document.getElementById('restMinus').addEventListener('click', () => adjustRest(-10));
+  document.getElementById('restPlus').addEventListener('click', () => adjustRest(10));
 
   document.querySelectorAll('.check').forEach(btn =>
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const row = btn.closest('.set-row');
-      const wasDone = row.classList.toggle('done');
-      if (wasDone) {
-        const ex = row.closest('.exercise');
+      const nowDone = row.classList.toggle('done');
+      const ex = row.closest('.exercise');
+      const dc = ex.querySelector('.done-count');
+      dc.textContent = Math.max(0, (parseInt(dc.textContent) || 0) + (nowDone ? 1 : -1));
+      updateProgress();
+      if (nowDone) {
         const name = ex.querySelector('.name').textContent;
         const restText = ex.querySelector('.meta').textContent.match(/rest (\d+):(\d+)/);
         const secs = restText ? parseInt(restText[1]) * 60 + parseInt(restText[2]) : 90;

@@ -5,7 +5,7 @@
 ## Direction (agreed 2026-08-08)
 
 - **Mood:** light and clean — bright, airy, Apple-Fitness-adjacent. Color used sparingly for data.
-- **Accent:** electric blue `#0A5CFF` for actions, links, and structure (e.g. the superset bracket).
+- **Accent:** electric blue `#0A5CFF` for actions, links, and structure (elapsed chip, progress bar).
 - **In-workout density:** hybrid — a compact overview list of the session's exercises, with the active exercise's card expanded into large entry controls.
 - **PR moment:** subtle class — the ring quietly becomes an animated rainbow; the finish screen does the real celebrating with a single shimmer, no confetti.
 - **Type:** iOS system stack (SF Pro). Big tabular numerals for anything numeric.
@@ -14,11 +14,11 @@
 
 | Token | Value | Use |
 |---|---|---|
-| ground | `#F2F4F7` | App background |
-| card | `#FFFFFF` | Cards, sheets |
+| ground | `#EBF1F9 → #F5F7FB` (vertical gradient) | App background — blue-tinted so white cards read warm, not stale |
+| card | `#FFFFFF` | Cards, sheets — elevated with soft shadow, no border |
 | ink | `#0E1726` | Primary text |
 | ink-secondary | `#6B7688` | Metadata, previous-set column |
-| hairline | `#E7EAF0` | Card borders, dividers |
+| input-fill | `#EAEFF7` | Weight/reps entry fields |
 | accent | `#0A5CFF` | Buttons, links, superset rail |
 | ring-low | `#FF453A` | Ring < 70% of best e1RM |
 | ring-mid | `#FFB020` | Ring 70–90% |
@@ -35,7 +35,7 @@ Interactive HTML mockups live in `design/mockups/`. Each is a self-contained pag
 
 | # | Screen | File | Status |
 |---|---|---|---|
-| 01 | Workout logging (+ rest timer, finish sheet) | [design/mockups/01-logging.html](design/mockups/01-logging.html) | First draft — awaiting review |
+| 01 | Workout logging (+ rest timer, finish sheet) | [design/mockups/01-logging.html](design/mockups/01-logging.html) | Rev 2 — feedback applied (no supersets, no × in previous column, wider check, ±10s rest adjust, warmer ground) |
 | 02 | History feed | — | Not started |
 | 03 | Exercise detail (records, charts, history) | — | Not started |
 | 04 | Templates list + editor | — | Not started |

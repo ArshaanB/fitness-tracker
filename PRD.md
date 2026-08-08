@@ -25,6 +25,7 @@ The signature differentiator from day one: **the intensity ring** — instant, g
 - Social features, sharing, community.
 - Built-in exercise media/instructional content.
 - Body measurements beyond body weight.
+- Supersets/circuits (cut from v1 during design review 2026-08-08; data model keeps room for them).
 - Cardio and timed/duration exercises (strength logging only: weighted, bodyweight, and machine/cable exercises).
 
 ## 4. Target user
@@ -58,7 +59,6 @@ The live in-gym experience. Everything else in the app exists to serve this scre
 
 **Mid-workout flexibility**
 - Full editing during a session: add/remove/swap exercises, reorder, add/delete sets. The template is a starting point, not a contract.
-- **Supersets:** exercises can be grouped and alternated back-to-back, with the logger and rest timer aware of the grouping.
 - **In-workout exercise history:** tapping an exercise opens its past performance, records, and charts without leaving the session.
 
 **Interruptions**
@@ -71,7 +71,7 @@ The live in-gym experience. Everything else in the app exists to serve this scre
 ### 5.2 Routines & templates
 
 - A **flat list** of templates (e.g. Push, Pull, Legs) — no folders, programs, or scheduling in v1.
-- A template stores: an ordered list of exercises (with superset groupings), set structure, and **per-exercise rest durations** that drive the auto-timer.
+- A template stores: an ordered list of exercises, set structure, and **per-exercise rest durations** that drive the auto-timer.
 - Templates are not the source of target numbers: the numbers shown during a workout are simply **whatever was done last session** (auto-carry). Templates themselves change only through deliberate edits.
 - Templates can be created, edited, duplicated, and deleted.
 
@@ -110,6 +110,7 @@ Ideas raised but intentionally out of scope, listed so v1 doesn't preclude them:
 - Full body measurements.
 - Apple Watch app.
 - Personal features to be defined (see open questions).
+- Supersets/circuits (grouped, alternated exercises with shared rest).
 
 ## 7. Open questions
 
