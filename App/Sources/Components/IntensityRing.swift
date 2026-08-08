@@ -1,0 +1,39 @@
+import SwiftUI
+
+/// The app's signature element: a donut showing how a set (or session) compares
+/// to the exercise's best estimated 1RM. Rainbow at >= 100%.
+struct IntensityRing: View {
+    /// e1RM ÷ best e1RM. Nil renders an empty track.
+    let ratio: Double?
+    var size: CGFloat = 26
+
+    private var lineWidth: CGFloat { size * 0.19 }
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Theme.ringTrack, lineWidth: lineWidth)
+            if let ratio {
+                if ratio >= 1 {
+                    Circle().stroke(
+                        AngularGradient(colors: Theme.rainbow, center: .center),
+                        lineWidth: lineWidth)
+                } else {
+                    Circle()
+                        .trim(from: 0, to: max(0.06, ratio))
+                        .stroke(color(for: ratio),
+                                style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+            }
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func color(for ratio: Double) -> Color {
+        switch ratio {
+        case ..<0.7: Theme.ringLow
+        case ..<0.9: Theme.ringMid
+        default: Theme.ringHigh
+        }
+    }
+}
