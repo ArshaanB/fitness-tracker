@@ -1,3 +1,4 @@
+import FitnessKit
 import SwiftUI
 
 enum Theme {
@@ -65,5 +66,3 @@ enum Format {
         return "—"
     }
 }
-
-import FitnessKit

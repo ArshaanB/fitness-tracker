@@ -29,12 +29,12 @@ struct HistoryView: View {
                         .padding(.horizontal, 14)
                         .padding(.bottom, 24)
                     }
-                    .navigationDestination(for: String.self) { workoutId in
-                        if let workout = model.monthSections
-                            .flatMap(\.workouts).first(where: { $0.id == workoutId }) {
-                            WorkoutDetailView(workout: workout)
-                        }
-                    }
+                }
+            }
+            .navigationDestination(for: String.self) { workoutId in
+                if let workout = model.monthSections
+                    .flatMap(\.workouts).first(where: { $0.id == workoutId }) {
+                    WorkoutDetailView(workout: workout)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

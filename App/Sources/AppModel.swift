@@ -1,6 +1,7 @@
 import Foundation
 import FitnessKit
 import GRDB
+import Observation
 
 @MainActor
 @Observable
@@ -75,21 +76,31 @@ final class AppModel {
             return f
         }()
         var sections: [MonthSection] = []
+        var monthKey = ""
+        var monthTitleText = ""
+        var monthWorkouts: [LoadedWorkout] = []
+        var monthSeconds = 0
+        func flushMonth() {
+            guard !monthWorkouts.isEmpty else { return }
+            sections.append(MonthSection(id: monthKey, title: monthTitleText,
+                                         workoutCount: monthWorkouts.count,
+                                         totalSeconds: monthSeconds,
+                                         workouts: monthWorkouts))
+        }
         for workout in workouts.reversed() {
             let comps = calendar.dateComponents([.year, .month], from: workout.startedAt)
-            let key = "\(comps.year!)-\(comps.month!)"
-            if sections.last?.id != key {
-                sections.append(MonthSection(id: key,
-                                             title: monthTitle.string(from: workout.startedAt),
-                                             workoutCount: 0, totalSeconds: 0, workouts: []))
+            let key = "\(comps.year ?? 0)-\(comps.month ?? 0)"
+            if key != monthKey {
+                flushMonth()
+                monthKey = key
+                monthTitleText = monthTitle.string(from: workout.startedAt)
+                monthWorkouts = []
+                monthSeconds = 0
             }
-            let last = sections.removeLast()
-            sections.append(MonthSection(
-                id: last.id, title: last.title,
-                workoutCount: last.workoutCount + 1,
-                totalSeconds: last.totalSeconds + (workout.durationSeconds ?? 0),
-                workouts: last.workouts + [workout]))
+            monthWorkouts.append(workout)
+            monthSeconds += workout.durationSeconds ?? 0
         }
+        flushMonth()
 
         return Loaded(sections: sections, prCounts: prCounts,
                       exercises: histories, bestE1RM: bestE1RM)
