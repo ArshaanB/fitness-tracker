@@ -3,3 +3,4 @@ data/
 .build/
 App/FitnessTracker.xcodeproj/
 DerivedData/
+build/
