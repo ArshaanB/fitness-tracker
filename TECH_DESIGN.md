@@ -64,8 +64,12 @@ Import is idempotent (re-running doesn't duplicate) so it can be re-run during d
 - 12,596 set rows · 736 workouts (grouped by Date + Workout Name) · 91 distinct exercises.
 - Quoted fields with embedded commas appear; date format `YYYY-MM-DD HH:MM:SS`; duration format `1h 5m`.
 - ~3,471 zero-weight rows (Push Up, Chin Up, Pull Up, …) → bodyweight exercises; e1RM treats these as reps-only.
-- ~2,464 rows with `Seconds` and 3 with `Distance` (planks, treadmill). v1 UI doesn't create timed/cardio sets, but the importer preserves them (`sets` gains nullable `seconds`/`distance` columns) so history is complete.
+- Rows with `Seconds` and `Distance` (planks, treadmill). v1 UI doesn't create timed/cardio sets, but the importer preserves them (`sets` gains nullable `seconds`/`distance` columns) so history is complete.
 - RPE column is entirely empty — safely ignored.
+- `Set Order` is not always numeric — two special values discovered on first real render:
+  - **"Rest Timer"** (1,871 rows): not sets — the configured rest duration per exercise. Imported as `workoutItem.restSeconds`, which will seed template rest times.
+  - **"W"** (735 rows): warm-up sets. Imported as real sets with `isWarmup = true`; excluded from all records/e1RM baselines (matching Strong), shown with a "W" marker.
+  - Set positions therefore come from appearance order, not `Set Order` (Strong restarts numbering around warm-ups). Net: 10,725 real sets.
 
 ## 5. Sync strategy (v1: deliberately simple)
 

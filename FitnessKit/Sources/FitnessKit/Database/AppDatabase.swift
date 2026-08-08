@@ -55,6 +55,7 @@ public enum AppDatabase {
                 t.primaryKey("id", .text)
                 t.belongsTo("workoutItem", onDelete: .cascade).notNull()
                 t.column("position", .integer).notNull()
+                t.column("isWarmup", .boolean).notNull().defaults(to: false)
                 t.column("weight", .double)
                 t.column("reps", .integer)
                 t.column("seconds", .double)    // imported timed history only in v1

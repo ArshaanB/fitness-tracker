@@ -24,7 +24,12 @@ import Testing
         let workouts = try StrongImport.parse(csv: text)
 
         #expect(workouts.count == 736)
-        #expect(workouts.reduce(0) { $0 + $1.exercises.reduce(0) { $0 + $1.sets.count } } == 12596)
+        // 12,596 CSV rows minus 1,871 "Rest Timer" rows.
+        #expect(workouts.reduce(0) { $0 + $1.exercises.reduce(0) { $0 + $1.sets.count } } == 10725)
+
+        // Rest-timer metadata survives: today's OHP rest is 90s in the export.
+        let restValues = workouts.flatMap { $0.exercises.compactMap(\.restSeconds) }
+        #expect(!restValues.isEmpty)
 
         let exerciseNames = Set(workouts.flatMap { $0.exercises.map(\.name) })
         #expect(exerciseNames.count == 91)
@@ -42,7 +47,7 @@ import Testing
         let summary = try StrongImporter.run(workouts, into: db)
 
         #expect(summary.workoutsImported == 736)
-        #expect(summary.setsImported == 12596)
+        #expect(summary.setsImported == 10725)
         #expect(summary.exercisesCreated == 91)
 
         // Best bench e1RM must exist and be plausible — this is the intensity

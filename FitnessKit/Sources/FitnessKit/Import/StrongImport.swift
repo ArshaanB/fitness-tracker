@@ -71,17 +71,28 @@ public enum StrongImport {
                 workoutsByKey[key]?.notes = workoutNotes
             }
 
-            let position: Int
-            if let orderValue = Double(field(row, "Set Order")) {
-                position = Int(orderValue)
-            } else {
-                position = (exerciseIndexByKey[key]?[exerciseName]).map {
-                    workoutsByKey[key]!.exercises[$0].sets.count + 1
-                } ?? 1
+            let orderField = field(row, "Set Order")
+            if orderField == "Rest Timer" {
+                // Strong emits "Rest Timer" rows between sets: no weight/reps,
+                // Seconds = the configured rest. Capture as exercise metadata.
+                if let rest = positiveDouble(field(row, "Seconds")),
+                   let i = exerciseIndexByKey[key]?[exerciseName],
+                   workoutsByKey[key]?.exercises[i].restSeconds == nil {
+                    workoutsByKey[key]?.exercises[i].restSeconds = Int(rest)
+                }
+                continue
             }
+
+            // Positions come from appearance order (the export is already
+            // ordered); Strong's own Set Order restarts numbering around
+            // warm-up ("W") sets, so it isn't a reliable sequence.
+            let position = (exerciseIndexByKey[key]?[exerciseName]).map {
+                workoutsByKey[key]!.exercises[$0].sets.count + 1
+            } ?? 1
             let notes = field(row, "Notes")
             let set = ImportedSet(
                 position: position,
+                isWarmup: orderField == "W",
                 weight: positiveDouble(field(row, "Weight")),
                 reps: positiveDouble(field(row, "Reps")).map { Int($0) },
                 seconds: positiveDouble(field(row, "Seconds")),

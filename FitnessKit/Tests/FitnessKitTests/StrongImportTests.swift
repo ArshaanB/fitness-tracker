@@ -60,8 +60,11 @@ import Testing
 
 let sampleCSV = """
 Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE
+2026-08-08 09:02:00,"Push Day",51m,"Bench Press (Barbell)",W,135.0,5.0,0,0.0,,,
 2026-08-08 09:02:00,"Push Day",51m,"Bench Press (Barbell)",1,205.0,8.0,0,0.0,"","felt strong",
+2026-08-08 09:02:00,"Push Day",51m,"Bench Press (Barbell)",Rest Timer,0,0.0,0,90.0,,,
 2026-08-08 09:02:00,"Push Day",51m,"Bench Press (Barbell)",2,215.0,8.0,0,0.0,,,
+2026-08-08 09:02:00,"Push Day",51m,"Bench Press (Barbell)",Rest Timer,0,0.0,0,90.0,,,
 2026-08-08 09:02:00,"Push Day",51m,"Pull Up",1,0.0,10.0,0,0.0,"slow negatives",,
 2026-08-08 09:02:00,"Push Day",51m,"Plank",1,0.0,0.0,0,60.0,,,
 2026-08-06 08:47:00,"Pull Day",1h 2m,"Deadlift (Barbell)",1,315.0,5.0,0,0.0,,,
@@ -84,9 +87,14 @@ Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,
 
         let bench = push.exercises[0]
         #expect(bench.name == "Bench Press (Barbell)")
-        #expect(bench.sets.count == 2)
-        #expect(bench.sets[0].weight == 205)
-        #expect(bench.sets[0].reps == 8)
+        #expect(bench.sets.count == 3)  // W + 2 working; Rest Timer rows are not sets
+        #expect(bench.restSeconds == 90)
+        #expect(bench.sets[0].isWarmup)
+        #expect(bench.sets[0].weight == 135)
+        #expect(bench.sets.map(\.position) == [1, 2, 3])
+        #expect(bench.sets[1].weight == 205)
+        #expect(bench.sets[1].reps == 8)
+        #expect(bench.sets[1].isWarmup == false)
 
         let pullUp = push.exercises[1]
         #expect(pullUp.sets[0].weight == nil)  // bodyweight: zero weight becomes nil
@@ -113,7 +121,7 @@ Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,
         let first = try StrongImporter.run(workouts, into: db)
         #expect(first.workoutsImported == 2)
         #expect(first.workoutsSkipped == 0)
-        #expect(first.setsImported == 5)
+        #expect(first.setsImported == 6)
         #expect(first.exercisesCreated == 4)
 
         let second = try StrongImporter.run(workouts, into: db)
@@ -127,7 +135,7 @@ Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,
              try ExerciseRecord.fetchCount(d))
         }
         #expect(workoutCount == 2)
-        #expect(setCount == 5)
+        #expect(setCount == 6)
         #expect(exerciseCount == 4)
     }
 }

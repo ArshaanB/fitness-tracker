@@ -59,19 +59,21 @@ public enum Stats {
                     order.append(exercise.exerciseId)
                 }
                 let volume = exercise.sets.reduce(0) { $0 + ($1.weight ?? 0) * Double($1.reps ?? 0) }
+                let workingSets = exercise.sets.filter { !$0.isWarmup }
                 builders[exercise.exerciseId]?.sessions.append(
                     ExerciseHistory.Session(id: workout.id,
                                             date: workout.startedAt,
                                             sets: exercise.sets,
                                             bestE1RM: exercise.bestE1RM,
                                             volume: volume,
-                                            heaviest: exercise.sets.compactMap(\.weight).max()))
+                                            heaviest: workingSets.compactMap(\.weight).max()))
             }
         }
 
         return order.compactMap { id in
             guard let builder = builders[id] else { return nil }
-            let allSets = builder.sessions.flatMap(\.sets)
+            // Records only ever come from working sets.
+            let allSets = builder.sessions.flatMap(\.sets).filter { !$0.isWarmup }
             let bestSet = allSets
                 .compactMap { set -> (Double, Int, Double)? in
                     guard let w = set.weight, let r = set.reps, let e = set.e1RM else { return nil }

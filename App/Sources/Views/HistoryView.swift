@@ -3,9 +3,10 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(AppModel.self) private var model
+    @State private var path = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 switch model.state {
                 case .loading:
@@ -40,6 +41,15 @@ struct HistoryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .appBackground()
             .navigationTitle("History")
+            .onChange(of: model.isReady) { _, ready in
+                #if DEBUG
+                // Screenshot/dev hook: SIMCTL_CHILD_OPEN_WORKOUT=latest
+                if ready, ProcessInfo.processInfo.environment["OPEN_WORKOUT"] == "latest",
+                   let id = model.monthSections.first?.workouts.first?.id {
+                    path.append(id)
+                }
+                #endif
+            }
         }
     }
 }

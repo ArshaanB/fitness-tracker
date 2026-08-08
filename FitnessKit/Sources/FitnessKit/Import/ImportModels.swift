@@ -2,15 +2,17 @@ import Foundation
 
 public struct ImportedSet: Equatable, Sendable {
     public var position: Int
+    public var isWarmup: Bool
     public var weight: Double?
     public var reps: Int?
     public var seconds: Double?
     public var distance: Double?
     public var notes: String?
 
-    public init(position: Int, weight: Double? = nil, reps: Int? = nil,
+    public init(position: Int, isWarmup: Bool = false, weight: Double? = nil, reps: Int? = nil,
                 seconds: Double? = nil, distance: Double? = nil, notes: String? = nil) {
         self.position = position
+        self.isWarmup = isWarmup
         self.weight = weight
         self.reps = reps
         self.seconds = seconds
@@ -22,10 +24,14 @@ public struct ImportedSet: Equatable, Sendable {
 public struct ImportedExercise: Equatable, Sendable {
     public var name: String
     public var sets: [ImportedSet]
+    /// Rest duration from Strong's "Rest Timer" rows — the user's configured
+    /// per-exercise rest, which later seeds template rest times.
+    public var restSeconds: Int?
 
-    public init(name: String, sets: [ImportedSet]) {
+    public init(name: String, sets: [ImportedSet], restSeconds: Int? = nil) {
         self.name = name
         self.sets = sets
+        self.restSeconds = restSeconds
     }
 }
 

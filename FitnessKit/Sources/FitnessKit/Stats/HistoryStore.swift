@@ -7,6 +7,7 @@ import GRDB
 public struct LoadedSet: Identifiable, Sendable {
     public let id: String
     public let position: Int
+    public let isWarmup: Bool
     public let weight: Double?
     public let reps: Int?
     public let seconds: Double?
@@ -22,9 +23,11 @@ public struct LoadedExercise: Identifiable, Sendable {
     public let exerciseId: String
     public let name: String
     public let kind: ExerciseKind
+    public let restSeconds: Int?
     public let sets: [LoadedSet]
 
-    public var bestE1RM: Double? { sets.compactMap(\.e1RM).max() }
+    /// Warm-up sets never count toward records.
+    public var bestE1RM: Double? { sets.filter { !$0.isWarmup }.compactMap(\.e1RM).max() }
 }
 
 public struct LoadedWorkout: Identifiable, Sendable {
@@ -66,13 +69,15 @@ public enum HistoryStore {
                         let exercise = exercisesById[item.exerciseId]
                         let sets = (setsByItem[item.id] ?? [])
                             .sorted { $0.position < $1.position }
-                            .map { LoadedSet(id: $0.id, position: $0.position, weight: $0.weight,
+                            .map { LoadedSet(id: $0.id, position: $0.position,
+                                             isWarmup: $0.isWarmup, weight: $0.weight,
                                              reps: $0.reps, seconds: $0.seconds) }
                         return LoadedExercise(
                             id: item.id,
                             exerciseId: item.exerciseId,
                             name: exercise?.name ?? "Unknown",
                             kind: exercise.flatMap { ExerciseKind(rawValue: $0.kind) } ?? .bodyweight,
+                            restSeconds: item.restSeconds,
                             sets: sets)
                     }
                     return LoadedWorkout(id: workout.id, name: workout.name,

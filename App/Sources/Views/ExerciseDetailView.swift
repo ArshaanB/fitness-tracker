@@ -96,6 +96,13 @@ struct ExerciseDetailView: View {
         }
     }
 
+    private var yDomain: ClosedRange<Double> {
+        let values = chartPoints.map(\.value)
+        guard let min = values.min(), let max = values.max() else { return 0...1 }
+        let pad = Swift.max((max - min) * 0.15, 5)
+        return (min - pad)...(max + pad)
+    }
+
     private var chartCard: some View {
         VStack(spacing: 10) {
             Picker("Metric", selection: $metric) {
@@ -112,7 +119,7 @@ struct ExerciseDetailView: View {
                     .foregroundStyle(Theme.accent)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             }
-            .chartYScale(domain: .automatic(includesZero: false))
+            .chartYScale(domain: yDomain)
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: 4)) {
                     AxisValueLabel().font(.caption2).foregroundStyle(Theme.inkTertiary)

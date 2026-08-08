@@ -21,6 +21,10 @@ final class AppModel {
     }
 
     private(set) var state: LoadState = .loading
+    var isReady: Bool {
+        if case .ready = state { return true }
+        return false
+    }
     private(set) var monthSections: [MonthSection] = []
     private(set) var prCounts: [String: Int] = [:]
     private(set) var exercises: [ExerciseHistory] = []  // sorted by last done, most recent first

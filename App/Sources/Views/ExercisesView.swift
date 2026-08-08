@@ -4,6 +4,7 @@ import SwiftUI
 struct ExercisesView: View {
     @Environment(AppModel.self) private var model
     @State private var search = ""
+    @State private var path = NavigationPath()
 
     private var filtered: [ExerciseHistory] {
         guard !search.isEmpty else { return model.exercises }
@@ -11,7 +12,7 @@ struct ExercisesView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(filtered) { exercise in
@@ -31,6 +32,17 @@ struct ExercisesView: View {
                 if let exercise = model.exercises.first(where: { $0.id == exerciseId }) {
                     ExerciseDetailView(exercise: exercise)
                 }
+            }
+            .onChange(of: model.isReady) { _, ready in
+                #if DEBUG
+                // Screenshot/dev hook: SIMCTL_CHILD_OPEN_EXERCISE="Bench Press"
+                if ready, let name = ProcessInfo.processInfo.environment["OPEN_EXERCISE"],
+                   let exercise = model.exercises.first(where: {
+                       $0.name.localizedCaseInsensitiveContains(name)
+                   }) {
+                    path.append(exercise.id)
+                }
+                #endif
             }
         }
     }

@@ -56,12 +56,14 @@ public enum StrongImporter {
 
                     let item = WorkoutItemRecord(workoutId: workoutRecord.id,
                                                  exerciseId: exerciseId,
-                                                 position: index + 1)
+                                                 position: index + 1,
+                                                 restSeconds: exercise.restSeconds)
                     try item.insert(db)
 
                     for set in exercise.sets {
                         try WorkoutSetRecord(workoutItemId: item.id,
                                              position: set.position,
+                                             isWarmup: set.isWarmup,
                                              weight: set.weight,
                                              reps: set.reps,
                                              seconds: set.seconds,

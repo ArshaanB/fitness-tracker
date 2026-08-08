@@ -65,9 +65,9 @@ private struct ExerciseCard: View {
 
             ForEach(exercise.sets) { set in
                 HStack {
-                    Text("\(set.position)")
+                    Text(set.isWarmup ? "W" : "\(set.position)")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.inkSecondary)
+                        .foregroundStyle(set.isWarmup ? Theme.ringMid : Theme.inkSecondary)
                         .frame(width: 22)
                         .monospacedDigit()
                     Text(Format.set(set).replacingOccurrences(of: "×", with: " × "))

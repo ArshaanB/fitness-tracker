@@ -59,6 +59,7 @@ public struct WorkoutSetRecord: Codable, Sendable, FetchableRecord, PersistableR
     public var id: String
     public var workoutItemId: String
     public var position: Int
+    public var isWarmup: Bool
     public var weight: Double?
     public var reps: Int?
     public var seconds: Double?
@@ -67,11 +68,13 @@ public struct WorkoutSetRecord: Codable, Sendable, FetchableRecord, PersistableR
     public var completedAt: Date?
 
     public init(id: String = UUID().uuidString, workoutItemId: String, position: Int,
-                weight: Double? = nil, reps: Int? = nil, seconds: Double? = nil,
-                distance: Double? = nil, notes: String? = nil, completedAt: Date? = nil) {
+                isWarmup: Bool = false, weight: Double? = nil, reps: Int? = nil,
+                seconds: Double? = nil, distance: Double? = nil, notes: String? = nil,
+                completedAt: Date? = nil) {
         self.id = id
         self.workoutItemId = workoutItemId
         self.position = position
+        self.isWarmup = isWarmup
         self.weight = weight
         self.reps = reps
         self.seconds = seconds
