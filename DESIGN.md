@@ -39,7 +39,7 @@ Interactive HTML mockups live in `design/mockups/`. Each is a self-contained pag
 | 02 | History feed (+ tab bar) | [design/mockups/02-history.html](design/mockups/02-history.html) | Rev 2 — set counts removed from stats row |
 | 03 | Exercise detail (records, chart, history) | [design/mockups/03-exercise-detail.html](design/mockups/03-exercise-detail.html) | Rev 2 — hero label trimmed to "Best est. 1RM" |
 | 04 | Templates list + editor (Workout tab) | [design/mockups/04-templates.html](design/mockups/04-templates.html) | First draft — awaiting review |
-| 05 | Profile: streaks + body weight + import | [design/mockups/05-profile.html](design/mockups/05-profile.html) | First draft — awaiting review |
+| 05 | Profile: streaks + body weight + import | [design/mockups/05-profile.html](design/mockups/05-profile.html) | Rev 2 — weekly-goal coloring (green ≥ goal, yellow 2, orange 1, red 0), goal line, goal setting row |
 
 ## Navigation (established in mockup 02)
 

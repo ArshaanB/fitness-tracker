@@ -26,9 +26,11 @@ template_items   id, template_id, exercise_id, position,
                  rest_seconds, target_set_count
 workouts         id, user_id, template_id?, started_at, finished_at?, notes
 workout_items    id, workout_id, exercise_id, position, superset_group, rest_seconds
-sets             id, workout_item_id, position, weight?, reps,
+sets             id, workout_item_id, position, weight?, reps?,
+                 seconds?, distance?,           -- imported timed/cardio history only in v1
                  completed_at?                  -- null = planned but not done
 body_weights     id, user_id, measured_at, weight
+settings         user_id, weekly_goal (default 3), unit (lbs)
 ```
 
 Notes:
@@ -50,12 +52,20 @@ Thresholds live in one constants file — expect tuning after real gym use.
 
 ## 4. Strong CSV import
 
-First feature built. A parser for Strong's export format (one row per set: Date, Workout Name, Exercise Name, Set Order, Weight, Reps, …) that:
+First feature built. A parser for Strong's export format (one row per set) that:
 1. Creates one `exercises` row per distinct exercise name (this *is* the v1 exercise library).
 2. Groups rows by (date, workout name) into `workouts` / `workout_items` / `sets`.
 3. Runs as a pure, unit-tested function: CSV in → domain objects out. Tested against the owner's real export before any UI exists.
 
 Import is idempotent (re-running doesn't duplicate) so it can be re-run during development.
+
+**Real export profile** (owner's data, 2018-06-16 → 2026-08-08; the local copy lives gitignored at `data/strong_workouts.csv` — personal data never gets committed to this public repo):
+- Columns: `Date, Workout Name, Duration, Exercise Name, Set Order, Weight, Reps, Distance, Seconds, Notes, Workout Notes, RPE`.
+- 12,596 set rows · 736 workouts (grouped by Date + Workout Name) · 91 distinct exercises.
+- Quoted fields with embedded commas appear; date format `YYYY-MM-DD HH:MM:SS`; duration format `1h 5m`.
+- ~3,471 zero-weight rows (Push Up, Chin Up, Pull Up, …) → bodyweight exercises; e1RM treats these as reps-only.
+- ~2,464 rows with `Seconds` and 3 with `Distance` (planks, treadmill). v1 UI doesn't create timed/cardio sets, but the importer preserves them (`sets` gains nullable `seconds`/`distance` columns) so history is complete.
+- RPE column is entirely empty — safely ignored.
 
 ## 5. Sync strategy (v1: deliberately simple)
 

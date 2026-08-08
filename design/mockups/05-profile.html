@@ -131,8 +131,8 @@
         <div class="screen-scroll">
           <div class="tiles">
             <div class="tile"><b>3</b><span>This week</span></div>
-            <div class="tile"><b>9 <small>wks</small></b><span>Streak ≥ 3/wk</span></div>
-            <div class="tile"><b>3.6</b><span>Avg / week</span></div>
+            <div class="tile"><b>7 <small>wks</small></b><span>Streak at goal</span></div>
+            <div class="tile"><b>2.8</b><span>Avg / week</span></div>
           </div>
 
           <div class="chart-card">
@@ -158,6 +158,7 @@
           </div>
 
           <div class="settings">
+            <div class="set-row"><span class="sr-label">Weekly goal</span><span class="sr-value">3 workouts</span></div>
             <div class="set-row"><span class="sr-label">Import from Strong</span><span class="sr-value">CSV</span></div>
             <div class="set-row"><span class="sr-label">Account</span><span class="sr-value">arshaan</span></div>
             <div class="set-row"><span class="sr-label">Units</span><span class="sr-value">lbs</span></div>
@@ -188,7 +189,8 @@
     <div class="spec">
       <div class="spec-card">
         <h2>Consistency</h2>
-        <div class="legend-row"><div class="legend-text"><span class="legend-label">Streak definition</span><span class="legend-sub">Consecutive weeks hitting ≥ 3 workouts — steadiness, not unbroken daily chains.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Weekly goal drives color</span><span class="legend-sub">Goal met (3+) is green, 2 is yellow, 1 is orange, 0 is a red stub. The goal is a setting (default 3) with a dashed line on the chart.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Streak definition</span><span class="legend-sub">Consecutive weeks hitting your weekly goal — steadiness, not unbroken daily chains.</span></div></div>
         <div class="legend-row"><div class="legend-text"><span class="legend-label">Current week emphasized</span><span class="legend-sub">The in-progress week renders lighter — it isn't a miss, it just isn't over.</span></div></div>
       </div>
       <div class="spec-card">
@@ -205,8 +207,10 @@
 </div>
 
 <script>
-  // ---- Workouts per week (bars) ----
-  const FREQ = [3, 4, 3, 2, 4, 3, 4, 3, 3, 4, 3, 3];
+  // ---- Workouts per week (bars, colored vs weekly goal) ----
+  const GOAL = 3;
+  const FREQ = [3, 4, 0, 1, 2, 3, 4, 3, 3, 4, 3, 3];
+  const freqColor = v => v >= GOAL ? '#2DBE5F' : v === 2 ? '#FFC02E' : v === 1 ? '#F28C0D' : '#FF453A';
   const WEEKS = ['May 18', 'May 25', 'Jun 1', 'Jun 8', 'Jun 15', 'Jun 22', 'Jun 29', 'Jul 6', 'Jul 13', 'Jul 20', 'Jul 27', 'Aug 3'];
   (function () {
     const svg = document.getElementById('freqChart');
@@ -221,14 +225,16 @@
     const bars = FREQ.map((v, i) => {
       const x = PAD.l + i * slot + (slot - bw) / 2;
       const isCurrent = i === n - 1;
-      const top = y(v), bh = H - PAD.b - top;
+      const top = v === 0 ? H - PAD.b - 6 : y(v);
       return `<path d="M${x},${H - PAD.b}V${top + 4}Q${x},${top} ${x + 4},${top}H${x + bw - 4}Q${x + bw},${top} ${x + bw},${top + 4}V${H - PAD.b}Z"
-        fill="#0A5CFF" fill-opacity="${isCurrent ? 0.35 : 0.85}" data-i="${i}"/>`;
+        fill="${freqColor(v)}" fill-opacity="${isCurrent ? 0.45 : 0.9}" data-i="${i}"/>`;
     }).join('');
     const grid = [2, 4].map(v =>
       `<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${y(v)}" y2="${y(v)}" stroke="#EDF0F5" stroke-width="1"/>
        <text x="${PAD.l - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="9.5" fill="#98A1AF">${v}</text>`).join('');
-    svg.innerHTML = `${grid}${bars}
+    const goalLine = `<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${y(GOAL)}" y2="${y(GOAL)}" stroke="#B9C4D6" stroke-width="1" stroke-dasharray="3 4"/>
+      <text x="${W - PAD.r}" y="${y(GOAL) - 4}" text-anchor="end" font-size="9" fill="#98A1AF">goal</text>`;
+    svg.innerHTML = `${grid}${goalLine}${bars}
       <text x="${PAD.l}" y="${H - 6}" font-size="9.5" fill="#98A1AF">${WEEKS[0]}</text>
       <text x="${W - PAD.r}" y="${H - 6}" text-anchor="end" font-size="9.5" fill="#98A1AF">This week</text>`;
     function show(i, clientRect) {
@@ -236,7 +242,7 @@
       tip.style.display = 'block';
       tip.style.left = `${(x / W) * clientRect.width}px`;
       tip.style.top = `${(y(FREQ[i]) / H) * clientRect.height}px`;
-      tip.innerHTML = `Week of ${WEEKS[i]}<b>${FREQ[i]} workout${FREQ[i] === 1 ? '' : 's'}</b>`;
+      tip.innerHTML = `Week of ${WEEKS[i]}<b>${FREQ[i]} of ${GOAL} workouts</b>`;
     }
     wrap.addEventListener('mousemove', e => {
       const r = svg.getBoundingClientRect();

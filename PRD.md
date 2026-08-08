@@ -88,6 +88,7 @@ The live in-gym experience. Everything else in the app exists to serve this scre
 
 - **Chronological feed** of past workouts, newest first: cards showing date, template name, duration, total volume, and PR badges. No calendar view in v1.
 - **Training frequency/streaks** view: workouts per week and consistency over time. This is the only aggregate dashboard in v1 — per-exercise charts carry the rest of the analytical load.
+- **Weekly goal:** a user setting (default 3 workouts/week) that drives the frequency view's colors — goal met is green, 2 is yellow, 1 is orange, 0 is red — and defines the streak (consecutive weeks at goal).
 - **Past workouts are fully editable:** fix typos, add forgotten sets, adjust dates. Records and intensity-ring baselines recompute after edits.
 - **Body weight tracking:** simple weight log with a chart. No other body measurements.
 
