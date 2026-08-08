@@ -130,7 +130,7 @@
 
         <div class="screen-scroll">
           <div class="tiles">
-            <div class="tile"><b>3</b><span>This week</span></div>
+            <div class="tile"><b id="thisWeekVal">3</b><span>This week</span></div>
             <div class="tile"><b>7 <small>wks</small></b><span>Streak at goal</span></div>
             <div class="tile"><b>2.8</b><span>Avg / week</span></div>
           </div>
@@ -211,6 +211,12 @@
   const GOAL = 3;
   const FREQ = [3, 4, 0, 1, 2, 3, 4, 3, 3, 4, 3, 3];
   const freqColor = v => v >= GOAL ? '#2DBE5F' : v === 2 ? '#FFC02E' : v === 1 ? '#F28C0D' : '#FF453A';
+  {
+    const thisWeek = FREQ[FREQ.length - 1];
+    const el = document.getElementById('thisWeekVal');
+    el.textContent = thisWeek;
+    el.style.color = freqColor(thisWeek);
+  }
   const WEEKS = ['May 18', 'May 25', 'Jun 1', 'Jun 8', 'Jun 15', 'Jun 22', 'Jun 29', 'Jul 6', 'Jul 13', 'Jul 20', 'Jul 27', 'Aug 3'];
   (function () {
     const svg = document.getElementById('freqChart');
