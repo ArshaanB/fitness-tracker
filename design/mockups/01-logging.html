@@ -1,0 +1,604 @@
+<title>Fitness Tracker — Logging Mockup</title>
+<style>
+  /* ---------- Page (presentation surface, themed) ---------- */
+  :root {
+    --pg-bg: #F6F7F9;
+    --pg-ink: #14202E;
+    --pg-ink-2: #5C6878;
+    --pg-hairline: #E2E6EC;
+    --pg-card: #FFFFFF;
+    --pg-accent: #0A5CFF;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pg-bg: #10151C;
+      --pg-ink: #E8EDF4;
+      --pg-ink-2: #8B97A6;
+      --pg-hairline: #232B36;
+      --pg-card: #171E27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --pg-bg: #10151C;
+    --pg-ink: #E8EDF4;
+    --pg-ink-2: #8B97A6;
+    --pg-hairline: #232B36;
+    --pg-card: #171E27;
+  }
+
+  body {
+    background: var(--pg-bg);
+    color: var(--pg-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 40px 20px 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 960px; margin: 0 auto; }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--pg-accent); margin: 0 0 8px;
+  }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
+  .lede { font-size: 15px; line-height: 1.55; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 6px; }
+  .hint { font-size: 13px; line-height: 1.5; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 36px; }
+  .hint strong { color: var(--pg-ink); font-weight: 600; }
+
+  .stage { display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; justify-content: center; }
+
+  /* Legend / spec side panel */
+  .spec { flex: 1 1 280px; max-width: 340px; display: flex; flex-direction: column; gap: 16px; }
+  .spec-card {
+    background: var(--pg-card); border: 1px solid var(--pg-hairline); border-radius: 14px; padding: 18px 18px 16px;
+  }
+  .spec-card h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--pg-ink-2); margin: 0 0 14px;
+  }
+  .legend-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .legend-row + .legend-row { border-top: 1px solid var(--pg-hairline); }
+  .legend-label { font-size: 13.5px; font-weight: 600; }
+  .legend-sub { font-size: 12px; color: var(--pg-ink-2); font-variant-numeric: tabular-nums; }
+  .legend-text { display: flex; flex-direction: column; gap: 1px; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+  .swatch i { width: 44px; height: 30px; border-radius: 7px; border: 1px solid var(--pg-hairline); display: block; }
+  .swatch span { font-size: 10.5px; color: var(--pg-ink-2); font-variant-numeric: tabular-nums; }
+
+  /* ---------- Phone frame ---------- */
+  .phone-wrap { flex: 0 0 auto; }
+  .phone {
+    width: 393px; height: 780px; background: #F2F4F7; border-radius: 44px;
+    border: 1px solid #D8DDE5;
+    box-shadow: 0 24px 60px rgba(16, 26, 44, 0.16), 0 2px 8px rgba(16, 26, 44, 0.08);
+    overflow: hidden; position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    color: #0E1726;
+    display: flex; flex-direction: column;
+  }
+  .phone * { box-sizing: border-box; }
+
+  .statusbar {
+    height: 50px; flex: 0 0 auto; display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 30px 6px; font-size: 14px; font-weight: 600;
+  }
+  .island {
+    position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+    width: 118px; height: 32px; background: #0B0F14; border-radius: 18px;
+  }
+
+  .navbar {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 18px 12px;
+  }
+  .nav-title { display: flex; flex-direction: column; gap: 1px; }
+  .nav-title b { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+  .nav-title span { font-size: 13px; color: #6B7688; font-variant-numeric: tabular-nums; }
+  .finish-btn {
+    background: #0A5CFF; color: #fff; border: none; border-radius: 999px;
+    font-size: 15px; font-weight: 600; padding: 9px 18px; cursor: pointer;
+    font-family: inherit;
+  }
+  .finish-btn:active { opacity: 0.8; }
+
+  .screen-scroll { flex: 1 1 auto; overflow-y: auto; padding: 2px 14px 120px; scrollbar-width: none; }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  /* Exercise cards */
+  .exercise {
+    background: #fff; border-radius: 16px; margin-bottom: 10px;
+    border: 1px solid #E7EAF0; overflow: hidden;
+  }
+  .exercise-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; cursor: pointer; -webkit-user-select: none; user-select: none;
+  }
+  .exercise-head .name { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+  .exercise-head .meta { font-size: 13px; color: #6B7688; font-variant-numeric: tabular-nums; }
+  .exercise-head .meta .done-count { color: #2DBE5F; font-weight: 600; }
+  .chev { color: #B4BCC8; font-size: 13px; margin-left: 10px; transition: transform 0.2s; }
+  .exercise.open .chev { transform: rotate(90deg); }
+  .exercise-body { display: none; padding: 0 12px 12px; }
+  .exercise.open .exercise-body { display: block; }
+
+  /* Superset bracket */
+  .superset { position: relative; padding-left: 14px; margin-bottom: 10px; }
+  .superset::before {
+    content: ""; position: absolute; left: 2px; top: 10px; bottom: 10px; width: 3px;
+    border-radius: 2px; background: #0A5CFF;
+  }
+  .superset-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; color: #0A5CFF;
+    text-transform: uppercase; margin: 0 0 6px 2px;
+  }
+  .superset .exercise { margin-bottom: 6px; }
+  .superset .exercise:last-child { margin-bottom: 0; }
+
+  /* Set table */
+  .set-cols {
+    display: grid; grid-template-columns: 34px 1fr 84px 64px 40px 40px;
+    gap: 6px; align-items: center; padding: 4px 4px 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #98A1AF;
+  }
+  .set-row {
+    display: grid; grid-template-columns: 34px 1fr 84px 64px 40px 40px;
+    gap: 6px; align-items: center; padding: 5px 4px; border-radius: 10px;
+  }
+  .set-row.done { background: #F0FAF3; }
+  .set-num { font-size: 15px; font-weight: 600; color: #6B7688; text-align: center; font-variant-numeric: tabular-nums; }
+  .prev { font-size: 14px; color: #98A1AF; font-variant-numeric: tabular-nums; }
+  .w-input, .r-input {
+    width: 100%; border: none; background: #F2F4F7; border-radius: 9px;
+    font-size: 17px; font-weight: 650; text-align: center; padding: 8px 2px;
+    font-family: inherit; color: #0E1726; font-variant-numeric: tabular-nums;
+  }
+  .set-row.done .w-input, .set-row.done .r-input { background: transparent; }
+  .w-input:focus, .r-input:focus { outline: 2px solid #0A5CFF; outline-offset: 1px; }
+  .w-cell { display: flex; align-items: center; gap: 4px; }
+  .stepper {
+    flex: 0 0 auto; width: 20px; height: 34px; border: none; background: transparent; color: #0A5CFF;
+    font-size: 16px; font-weight: 700; cursor: pointer; padding: 0; font-family: inherit;
+  }
+
+  /* Intensity ring */
+  .ring {
+    width: 26px; height: 26px; border-radius: 50%; margin: 0 auto; position: relative;
+    background: conic-gradient(var(--ring-color, #E4E8EF) calc(var(--pct, 0) * 1%), #E9ECF1 0);
+  }
+  .ring::after {
+    content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff;
+  }
+  .set-row.done .ring::after { background: #F0FAF3; }
+  .ring.rainbow {
+    background: conic-gradient(#FF453A, #FFB020, #F7E733, #2DBE5F, #38C7D8, #0A5CFF, #9D5CFF, #FF453A);
+    animation: ringspin 3.2s linear infinite;
+  }
+  @keyframes ringspin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ring.rainbow { animation: none; }
+  }
+
+  .check {
+    width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid #D5DAE2;
+    background: #fff; color: transparent; font-size: 15px; cursor: pointer; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center; font-family: inherit;
+  }
+  .set-row.done .check { background: #2DBE5F; border-color: #2DBE5F; color: #fff; }
+
+  .add-set {
+    width: 100%; border: none; background: transparent; color: #0A5CFF;
+    font-size: 14px; font-weight: 600; padding: 10px 0 4px; cursor: pointer; font-family: inherit;
+  }
+
+  /* Rest timer pill */
+  .rest-pill {
+    position: absolute; left: 16px; right: 16px; bottom: 20px;
+    background: #0E1726; color: #fff; border-radius: 18px; padding: 12px 16px;
+    display: none; align-items: center; gap: 14px;
+    box-shadow: 0 10px 30px rgba(14, 23, 38, 0.35);
+  }
+  .rest-pill.show { display: flex; }
+  .rest-pill .rest-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .rest-pill .rest-label { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8B97A6; }
+  .rest-pill .rest-time { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rest-bar { position: absolute; left: 16px; right: 16px; bottom: 8px; height: 3px; border-radius: 2px; background: #2A3646; overflow: hidden; }
+  .rest-bar i { display: block; height: 100%; background: #0A5CFF; width: 100%; border-radius: 2px; }
+  .skip-btn {
+    border: none; background: #2A3646; color: #fff; border-radius: 999px;
+    font-size: 13.5px; font-weight: 600; padding: 8px 16px; cursor: pointer; font-family: inherit;
+  }
+
+  /* Finish sheet */
+  .sheet {
+    position: absolute; inset: 0; background: rgba(14, 23, 38, 0.4);
+    display: none; align-items: flex-end; border-radius: 44px;
+  }
+  .sheet.show { display: flex; }
+  .sheet-card {
+    background: #F8F9FB; width: 100%; border-radius: 28px 28px 44px 44px; padding: 26px 22px 34px;
+  }
+  .sheet-card h3 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 2px; }
+  .sheet-sub { font-size: 13.5px; color: #6B7688; margin: 0 0 18px; }
+  .stat-row { display: flex; gap: 10px; margin-bottom: 18px; }
+  .stat {
+    flex: 1; background: #fff; border: 1px solid #E7EAF0; border-radius: 14px; padding: 12px 14px;
+  }
+  .stat b { display: block; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .stat span { font-size: 11.5px; color: #6B7688; }
+  .pr-section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #98A1AF; margin: 0 0 8px;
+  }
+  .pr-row {
+    display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #E7EAF0;
+    border-radius: 14px; padding: 12px 14px; position: relative; overflow: hidden; margin-bottom: 8px;
+  }
+  .pr-row .ring { margin: 0; flex: 0 0 auto; }
+  .pr-row .pr-text { flex: 1; }
+  .pr-row .pr-name { font-size: 14.5px; font-weight: 650; }
+  .pr-row .pr-detail { font-size: 12.5px; color: #6B7688; font-variant-numeric: tabular-nums; }
+  .pr-row .pr-delta { font-size: 14px; font-weight: 700; color: #2DBE5F; font-variant-numeric: tabular-nums; }
+  .pr-row::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.85) 50%, transparent 70%);
+    transform: translateX(-100%);
+  }
+  .sheet.show .pr-row::before { animation: shimmer 1.6s ease-out 0.5s 1; }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) { .sheet.show .pr-row::before { animation: none; } }
+  .sheet-done {
+    width: 100%; background: #0A5CFF; color: #fff; border: none; border-radius: 999px;
+    font-size: 16px; font-weight: 600; padding: 14px 0; cursor: pointer; margin-top: 12px; font-family: inherit;
+  }
+
+  @media (max-width: 500px) {
+    .phone { width: 100%; max-width: 393px; height: 720px; }
+    body { padding: 24px 12px 48px; }
+  }
+</style>
+
+<div class="page">
+  <p class="eyebrow">Fitness Tracker · Design · Mockup 01</p>
+  <h1>Workout logging</h1>
+  <p class="lede">The in-gym screen: hybrid density with the active exercise expanded, previous-session numbers inline, and the intensity ring scoring every set against your best estimated 1RM.</p>
+  <p class="hint"><strong>It's live:</strong> edit the weight or reps on Bench Press set 3 (try the − / + steppers — push it to 235) and watch the ring change. Check a set off to start the rest timer. Tap a collapsed exercise to expand it. Hit <strong>Finish</strong> for the PR moment.</p>
+
+  <div class="stage">
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀙈 􀋨</span></div>
+
+        <div class="navbar">
+          <div class="nav-title">
+            <b>Push Day</b>
+            <span id="elapsed">0:47:12</span>
+          </div>
+          <button class="finish-btn" id="finishBtn">Finish</button>
+        </div>
+
+        <div class="screen-scroll">
+          <!-- Bench Press — active, expanded -->
+          <div class="exercise open" data-best="290">
+            <div class="exercise-head">
+              <div>
+                <div class="name">Bench Press</div>
+                <div class="meta"><span class="done-count">2</span> of 4 sets · rest 3:00</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="exercise-body">
+              <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+
+              <div class="set-row done" data-w="205" data-r="8">
+                <span class="set-num">1</span>
+                <span class="prev">205 × 8</span>
+                <div class="w-cell"><input class="w-input" value="205" inputmode="decimal" aria-label="Weight set 1"></div>
+                <input class="r-input" value="8" inputmode="numeric" aria-label="Reps set 1">
+                <span class="ring"></span>
+                <button class="check" aria-label="Set 1 complete">✓</button>
+              </div>
+
+              <div class="set-row done" data-w="215" data-r="8">
+                <span class="set-num">2</span>
+                <span class="prev">215 × 8</span>
+                <div class="w-cell"><input class="w-input" value="215" inputmode="decimal" aria-label="Weight set 2"></div>
+                <input class="r-input" value="8" inputmode="numeric" aria-label="Reps set 2">
+                <span class="ring"></span>
+                <button class="check" aria-label="Set 2 complete">✓</button>
+              </div>
+
+              <div class="set-row" data-w="225" data-r="8">
+                <span class="set-num">3</span>
+                <span class="prev">225 × 7</span>
+                <div class="w-cell">
+                  <button class="stepper" data-d="-5" aria-label="Minus 5 pounds">−</button>
+                  <input class="w-input" value="225" inputmode="decimal" aria-label="Weight set 3">
+                  <button class="stepper" data-d="5" aria-label="Plus 5 pounds">+</button>
+                </div>
+                <input class="r-input" value="8" inputmode="numeric" aria-label="Reps set 3">
+                <span class="ring"></span>
+                <button class="check" aria-label="Complete set 3">✓</button>
+              </div>
+
+              <div class="set-row" data-w="225" data-r="6">
+                <span class="set-num">4</span>
+                <span class="prev">225 × 5</span>
+                <div class="w-cell"><input class="w-input" value="225" inputmode="decimal" aria-label="Weight set 4"></div>
+                <input class="r-input" value="6" inputmode="numeric" aria-label="Reps set 4">
+                <span class="ring"></span>
+                <button class="check" aria-label="Complete set 4">✓</button>
+              </div>
+
+              <button class="add-set">+ Add set</button>
+            </div>
+          </div>
+
+          <!-- Superset pair -->
+          <div class="superset">
+            <p class="superset-label">Superset</p>
+            <div class="exercise" data-best="106">
+              <div class="exercise-head">
+                <div>
+                  <div class="name">Incline Dumbbell Press</div>
+                  <div class="meta">0 of 3 sets · rest 1:30</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+              <div class="exercise-body">
+                <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+                <div class="set-row" data-w="80" data-r="10">
+                  <span class="set-num">1</span>
+                  <span class="prev">80 × 10</span>
+                  <div class="w-cell"><input class="w-input" value="80" inputmode="decimal" aria-label="Incline weight set 1"></div>
+                  <input class="r-input" value="10" inputmode="numeric" aria-label="Incline reps set 1">
+                  <span class="ring"></span>
+                  <button class="check" aria-label="Complete incline set 1">✓</button>
+                </div>
+                <button class="add-set">+ Add set</button>
+              </div>
+            </div>
+            <div class="exercise" data-best="230">
+              <div class="exercise-head">
+                <div>
+                  <div class="name">Chest Fly (Cable)</div>
+                  <div class="meta">0 of 3 sets · rest 1:30</div>
+                </div>
+                <span class="chev">›</span>
+              </div>
+              <div class="exercise-body">
+                <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+                <div class="set-row" data-w="42.5" data-r="12">
+                  <span class="set-num">1</span>
+                  <span class="prev">42.5 × 12</span>
+                  <div class="w-cell"><input class="w-input" value="42.5" inputmode="decimal" aria-label="Fly weight set 1"></div>
+                  <input class="r-input" value="12" inputmode="numeric" aria-label="Fly reps set 1">
+                  <span class="ring"></span>
+                  <button class="check" aria-label="Complete fly set 1">✓</button>
+                </div>
+                <button class="add-set">+ Add set</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsed exercises -->
+          <div class="exercise" data-best="175">
+            <div class="exercise-head">
+              <div>
+                <div class="name">Overhead Press</div>
+                <div class="meta">0 of 4 sets · rest 2:30</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="exercise-body">
+              <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+              <div class="set-row" data-w="115" data-r="8">
+                <span class="set-num">1</span>
+                <span class="prev">115 × 8</span>
+                <div class="w-cell"><input class="w-input" value="115" inputmode="decimal" aria-label="OHP weight set 1"></div>
+                <input class="r-input" value="8" inputmode="numeric" aria-label="OHP reps set 1">
+                <span class="ring"></span>
+                <button class="check" aria-label="Complete OHP set 1">✓</button>
+              </div>
+              <button class="add-set">+ Add set</button>
+            </div>
+          </div>
+
+          <div class="exercise" data-best="45">
+            <div class="exercise-head">
+              <div>
+                <div class="name">Lateral Raise</div>
+                <div class="meta">0 of 3 sets · rest 1:00</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="exercise-body">
+              <div class="set-cols"><span>Set</span><span>Previous</span><span>lbs</span><span>Reps</span><span></span><span></span></div>
+              <div class="set-row" data-w="25" data-r="14">
+                <span class="set-num">1</span>
+                <span class="prev">25 × 14</span>
+                <div class="w-cell"><input class="w-input" value="25" inputmode="decimal" aria-label="Lateral weight set 1"></div>
+                <input class="r-input" value="14" inputmode="numeric" aria-label="Lateral reps set 1">
+                <span class="ring"></span>
+                <button class="check" aria-label="Complete lateral set 1">✓</button>
+              </div>
+              <button class="add-set">+ Add set</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rest timer -->
+        <div class="rest-pill" id="restPill">
+          <div class="rest-info">
+            <span class="rest-label">Rest · <span id="restExercise">Bench Press</span></span>
+            <span class="rest-time" id="restTime">3:00</span>
+          </div>
+          <button class="skip-btn" id="skipBtn">Skip</button>
+          <div class="rest-bar"><i id="restBar"></i></div>
+        </div>
+
+        <!-- Finish sheet -->
+        <div class="sheet" id="sheet">
+          <div class="sheet-card">
+            <h3>Workout complete</h3>
+            <p class="sheet-sub">Push Day · Friday, Aug 8</p>
+            <div class="stat-row">
+              <div class="stat"><b id="statDur">51:26</b><span>Duration</span></div>
+              <div class="stat"><b>14,820 lbs</b><span>Volume</span></div>
+              <div class="stat"><b>13</b><span>Sets</span></div>
+            </div>
+            <p class="pr-section-label">New records</p>
+            <div class="pr-row">
+              <span class="ring rainbow" style="--pct:100"></span>
+              <div class="pr-text">
+                <div class="pr-name">Bench Press</div>
+                <div class="pr-detail">235 × 8 → est. 1RM 297 lbs</div>
+              </div>
+              <span class="pr-delta">+7 lbs</span>
+            </div>
+            <button class="sheet-done" id="sheetDone">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-card">
+        <h2>Intensity ring</h2>
+        <div class="legend-row">
+          <span class="ring" style="--pct:45; --ring-color:#FF453A"></span>
+          <div class="legend-text"><span class="legend-label">Far from max</span><span class="legend-sub">&lt; 70% of best est. 1RM</span></div>
+        </div>
+        <div class="legend-row">
+          <span class="ring" style="--pct:80; --ring-color:#FFB020"></span>
+          <div class="legend-text"><span class="legend-label">Working weight</span><span class="legend-sub">70–90%</span></div>
+        </div>
+        <div class="legend-row">
+          <span class="ring" style="--pct:95; --ring-color:#2DBE5F"></span>
+          <div class="legend-text"><span class="legend-label">Near your PR</span><span class="legend-sub">90–100%</span></div>
+        </div>
+        <div class="legend-row">
+          <span class="ring rainbow"></span>
+          <div class="legend-text"><span class="legend-label">PR territory</span><span class="legend-sub">≥ 100% — new best est. 1RM</span></div>
+        </div>
+      </div>
+      <div class="spec-card">
+        <h2>Tokens</h2>
+        <div class="swatches">
+          <div class="swatch"><i style="background:#F2F4F7"></i><span>ground</span></div>
+          <div class="swatch"><i style="background:#FFFFFF"></i><span>card</span></div>
+          <div class="swatch"><i style="background:#0E1726"></i><span>ink</span></div>
+          <div class="swatch"><i style="background:#0A5CFF"></i><span>accent</span></div>
+          <div class="swatch"><i style="background:#FF453A"></i><span>ring-low</span></div>
+          <div class="swatch"><i style="background:#FFB020"></i><span>ring-mid</span></div>
+          <div class="swatch"><i style="background:#2DBE5F"></i><span>ring-high</span></div>
+        </div>
+      </div>
+      <div class="spec-card">
+        <h2>Notes</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Hybrid density</span><span class="legend-sub">Active exercise expands; the rest collapse to a one-line summary.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Previous column</span><span class="legend-sub">Last session's set is the target to beat, always inline.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Superset bracket</span><span class="legend-sub">Blue rail groups alternated exercises; rest runs across the pair.</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const EPLEY = (w, r) => w * (1 + r / 30);
+
+  function updateRing(row) {
+    const ex = row.closest('.exercise');
+    const best = parseFloat(ex.dataset.best);
+    const w = parseFloat(row.querySelector('.w-input').value) || 0;
+    const r = parseFloat(row.querySelector('.r-input').value) || 0;
+    const ring = row.querySelector('.ring');
+    const pct = best > 0 ? (EPLEY(w, r) / best) * 100 : 0;
+    ring.classList.toggle('rainbow', pct >= 100);
+    if (pct < 100) {
+      ring.style.setProperty('--pct', Math.max(6, Math.min(pct, 100)).toFixed(1));
+      ring.style.setProperty('--ring-color', pct < 70 ? '#FF453A' : pct < 90 ? '#FFB020' : '#2DBE5F');
+    }
+  }
+
+  document.querySelectorAll('.set-row').forEach(row => {
+    updateRing(row);
+    row.querySelectorAll('.w-input, .r-input').forEach(inp =>
+      inp.addEventListener('input', () => updateRing(row)));
+  });
+
+  document.querySelectorAll('.stepper').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const row = btn.closest('.set-row');
+      const inp = row.querySelector('.w-input');
+      inp.value = (parseFloat(inp.value) || 0) + parseFloat(btn.dataset.d);
+      updateRing(row);
+    }));
+
+  // Accordion
+  document.querySelectorAll('.exercise-head').forEach(head =>
+    head.addEventListener('click', () => head.closest('.exercise').classList.toggle('open')));
+
+  // Elapsed timer
+  let elapsed = 47 * 60 + 12;
+  const fmt = s => {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+  setInterval(() => { elapsed++; document.getElementById('elapsed').textContent = fmt(elapsed); }, 1000);
+
+  // Set completion + rest timer
+  const pill = document.getElementById('restPill');
+  const restTime = document.getElementById('restTime');
+  const restBar = document.getElementById('restBar');
+  const restExercise = document.getElementById('restExercise');
+  let restInterval = null;
+
+  function startRest(name, seconds) {
+    clearInterval(restInterval);
+    restExercise.textContent = name;
+    let left = seconds;
+    const render = () => {
+      restTime.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      restBar.style.width = `${(left / seconds) * 100}%`;
+    };
+    render();
+    pill.classList.add('show');
+    restInterval = setInterval(() => {
+      left--;
+      if (left <= 0) { clearInterval(restInterval); pill.classList.remove('show'); return; }
+      render();
+    }, 1000);
+  }
+
+  document.getElementById('skipBtn').addEventListener('click', () => {
+    clearInterval(restInterval);
+    pill.classList.remove('show');
+  });
+
+  document.querySelectorAll('.check').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const row = btn.closest('.set-row');
+      const wasDone = row.classList.toggle('done');
+      if (wasDone) {
+        const ex = row.closest('.exercise');
+        const name = ex.querySelector('.name').textContent;
+        const restText = ex.querySelector('.meta').textContent.match(/rest (\d+):(\d+)/);
+        const secs = restText ? parseInt(restText[1]) * 60 + parseInt(restText[2]) : 90;
+        startRest(name, secs);
+      }
+      updateRing(row);
+    }));
+
+  // Finish sheet
+  const sheet = document.getElementById('sheet');
+  document.getElementById('finishBtn').addEventListener('click', () => {
+    document.getElementById('statDur').textContent = fmt(elapsed).replace(/^0:/, '');
+    sheet.classList.remove('show');
+    void sheet.offsetWidth;
+    sheet.classList.add('show');
+  });
+  document.getElementById('sheetDone').addEventListener('click', () => sheet.classList.remove('show'));
+</script>
