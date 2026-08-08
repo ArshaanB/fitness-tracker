@@ -36,10 +36,10 @@ Interactive HTML mockups live in `design/mockups/`. Each is a self-contained pag
 | # | Screen | File | Status |
 |---|---|---|---|
 | 01 | Workout logging (+ rest timer, finish sheet) | [design/mockups/01-logging.html](design/mockups/01-logging.html) | Rev 3 — previous column now "205 × 8" (light × reps); rev 2 dropped supersets/steppers, added ±10s rest adjust, warmer ground |
-| 02 | History feed (+ tab bar) | [design/mockups/02-history.html](design/mockups/02-history.html) | First draft — awaiting review |
-| 03 | Exercise detail (records, chart, history) | [design/mockups/03-exercise-detail.html](design/mockups/03-exercise-detail.html) | First draft — awaiting review |
-| 04 | Templates list + editor | — | Not started |
-| 05 | Profile: streaks + body weight | — | Not started |
+| 02 | History feed (+ tab bar) | [design/mockups/02-history.html](design/mockups/02-history.html) | Rev 2 — set counts removed from stats row |
+| 03 | Exercise detail (records, chart, history) | [design/mockups/03-exercise-detail.html](design/mockups/03-exercise-detail.html) | Rev 2 — hero label trimmed to "Best est. 1RM" |
+| 04 | Templates list + editor (Workout tab) | [design/mockups/04-templates.html](design/mockups/04-templates.html) | First draft — awaiting review |
+| 05 | Profile: streaks + body weight + import | [design/mockups/05-profile.html](design/mockups/05-profile.html) | First draft — awaiting review |
 
 ## Navigation (established in mockup 02)
 

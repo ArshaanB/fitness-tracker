@@ -1,0 +1,300 @@
+<title>Fitness Tracker — Templates Mockup</title>
+<style>
+  :root {
+    --pg-bg: #F6F7F9;
+    --pg-ink: #14202E;
+    --pg-ink-2: #5C6878;
+    --pg-hairline: #E2E6EC;
+    --pg-card: #FFFFFF;
+    --pg-accent: #0A5CFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pg-bg: #10151C; --pg-ink: #E8EDF4; --pg-ink-2: #8B97A6;
+      --pg-hairline: #232B36; --pg-card: #171E27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --pg-bg: #10151C; --pg-ink: #E8EDF4; --pg-ink-2: #8B97A6;
+    --pg-hairline: #232B36; --pg-card: #171E27;
+  }
+
+  body {
+    background: var(--pg-bg); color: var(--pg-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 40px 20px 72px; -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 960px; margin: 0 auto; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-accent); margin: 0 0 8px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
+  .lede { font-size: 15px; line-height: 1.55; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 6px; }
+  .hint { font-size: 13px; line-height: 1.5; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 36px; }
+  .hint strong { color: var(--pg-ink); font-weight: 600; }
+  .stage { display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; justify-content: center; }
+
+  .spec { flex: 1 1 280px; max-width: 340px; display: flex; flex-direction: column; gap: 16px; }
+  .spec-card { background: var(--pg-card); border: 1px solid var(--pg-hairline); border-radius: 14px; padding: 18px 18px 16px; }
+  .spec-card h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-ink-2); margin: 0 0 14px; }
+  .legend-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .legend-row + .legend-row { border-top: 1px solid var(--pg-hairline); }
+  .legend-label { font-size: 13.5px; font-weight: 600; }
+  .legend-sub { font-size: 12px; color: var(--pg-ink-2); }
+  .legend-text { display: flex; flex-direction: column; gap: 1px; }
+
+  /* Phone */
+  .phone-wrap { flex: 0 0 auto; }
+  .phone {
+    width: 393px; height: 780px;
+    background: linear-gradient(180deg, #EBF1F9 0%, #F3F6FB 40%, #F5F7FB 100%);
+    border-radius: 44px; border: 1px solid #D8DDE5;
+    box-shadow: 0 24px 60px rgba(16, 26, 44, 0.16), 0 2px 8px rgba(16, 26, 44, 0.08);
+    overflow: hidden; position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    color: #0E1726; display: flex; flex-direction: column;
+  }
+  .phone * { box-sizing: border-box; }
+  .statusbar { height: 50px; flex: 0 0 auto; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 6px; font-size: 14px; font-weight: 600; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 118px; height: 32px; background: #0B0F14; border-radius: 18px; }
+
+  .view { display: none; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .view.active { display: flex; }
+
+  .navbar { flex: 0 0 auto; padding: 8px 18px 12px; }
+  .navbar b { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .navbar-row { flex: 0 0 auto; padding: 6px 18px 10px; display: flex; align-items: center; justify-content: space-between; }
+  .back { display: inline-flex; align-items: center; gap: 3px; color: #0A5CFF; font-size: 14.5px; font-weight: 550; cursor: pointer; border: none; background: none; font-family: inherit; padding: 0; }
+  .back::before { content: "‹"; font-size: 22px; line-height: 1; }
+  .save-btn { border: none; background: none; color: #0A5CFF; font-size: 15px; font-weight: 650; cursor: pointer; font-family: inherit; }
+
+  .screen-scroll { flex: 1 1 auto; overflow-y: auto; padding: 2px 14px 110px; scrollbar-width: none; }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  /* Template list */
+  .tpl-card {
+    background: #fff; border-radius: 18px; margin-bottom: 12px; padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 8px 22px rgba(16, 38, 74, 0.07);
+    cursor: pointer;
+  }
+  .tpl-card:active { transform: scale(0.99); }
+  .tpl-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+  .tpl-name { font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; }
+  .start-btn {
+    background: #0A5CFF; color: #fff; border: none; border-radius: 999px;
+    font-size: 13.5px; font-weight: 650; padding: 7px 16px; cursor: pointer; font-family: inherit;
+    box-shadow: 0 3px 10px rgba(10, 92, 255, 0.25);
+  }
+  .start-btn:active { opacity: 0.8; }
+  .tpl-meta { font-size: 12.5px; color: #98A1AF; margin-bottom: 8px; }
+  .tpl-preview { font-size: 13px; color: #6B7688; line-height: 1.5; }
+
+  .empty-start {
+    width: 100%; border: none; background: transparent; color: #0A5CFF;
+    font-size: 14px; font-weight: 600; padding: 12px 0 4px; cursor: pointer; font-family: inherit;
+  }
+  .new-tpl {
+    width: 100%; background: transparent; border: 1.5px dashed #B9C4D6; color: #6B7688;
+    border-radius: 18px; font-size: 14.5px; font-weight: 600; padding: 16px 0; cursor: pointer; font-family: inherit;
+    margin-bottom: 8px;
+  }
+
+  /* Editor */
+  .name-input {
+    width: 100%; border: none; background: #fff; border-radius: 14px;
+    font-size: 17px; font-weight: 650; padding: 13px 16px; font-family: inherit; color: #0E1726;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 6px 16px rgba(16, 38, 74, 0.06);
+    margin-bottom: 12px;
+  }
+  .name-input:focus { outline: 2px solid #0A5CFF; }
+  .ed-row {
+    background: #fff; border-radius: 16px; margin-bottom: 8px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 6px 16px rgba(16, 38, 74, 0.06);
+  }
+  .drag { color: #C3CBD7; font-size: 17px; cursor: grab; flex: 0 0 auto; }
+  .ed-text { flex: 1; min-width: 0; }
+  .ed-name { font-size: 15px; font-weight: 650; margin-bottom: 1px; }
+  .ed-meta { font-size: 12.5px; color: #8B94A3; font-variant-numeric: tabular-nums; }
+  .ed-meta b { color: #0A5CFF; font-weight: 600; }
+  .ed-chev { color: #B4BCC8; font-size: 14px; }
+  .add-ex {
+    width: 100%; border: none; background: rgba(10, 92, 255, 0.08); color: #0A5CFF;
+    border-radius: 14px; font-size: 14.5px; font-weight: 650; padding: 13px 0; cursor: pointer; font-family: inherit;
+    margin-top: 4px;
+  }
+  .ed-note { font-size: 12px; color: #98A1AF; line-height: 1.5; padding: 12px 6px 0; }
+
+  /* Tab bar */
+  .tabbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 88px;
+    background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid #E7EAF0; border-radius: 0 0 44px 44px;
+    display: flex; padding: 10px 10px 26px;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: #98A1AF; font-size: 10.5px; font-weight: 600; cursor: pointer; border: none; background: none; font-family: inherit;
+  }
+  .tab.active { color: #0A5CFF; }
+  .tab svg { width: 25px; height: 25px; }
+
+  @media (max-width: 500px) {
+    .phone { width: 100%; max-width: 393px; height: 720px; }
+    body { padding: 24px 12px 48px; }
+  }
+</style>
+
+<div class="page">
+  <p class="eyebrow">Fitness Tracker · Design · Mockup 04</p>
+  <h1>Workout tab — templates</h1>
+  <p class="lede">The flat template list you start every session from, and the editor behind each card. Templates hold structure only — exercises, set counts, rest times; the numbers you chase come from last session.</p>
+  <p class="hint"><strong>It's live:</strong> tap a template card to open its editor (Start stays on the list); use ‹ Workout or Save to come back.</p>
+
+  <div class="stage">
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀙈 􀋨</span></div>
+
+        <!-- List view -->
+        <div class="view active" id="listView">
+          <div class="navbar"><b>Workout</b></div>
+          <div class="screen-scroll">
+            <div class="tpl-card" data-open>
+              <div class="tpl-top">
+                <span class="tpl-name">Push Day</span>
+                <button class="start-btn">Start</button>
+              </div>
+              <div class="tpl-meta">5 exercises · last done Friday</div>
+              <div class="tpl-preview">Bench Press · Incline Dumbbell Press · Overhead Press · Chest Fly · Lateral Raise</div>
+            </div>
+
+            <div class="tpl-card" data-open>
+              <div class="tpl-top">
+                <span class="tpl-name">Pull Day</span>
+                <button class="start-btn">Start</button>
+              </div>
+              <div class="tpl-meta">5 exercises · last done Wednesday</div>
+              <div class="tpl-preview">Deadlift · Barbell Row · Lat Pulldown · Face Pull · Bicep Curl</div>
+            </div>
+
+            <div class="tpl-card" data-open>
+              <div class="tpl-top">
+                <span class="tpl-name">Leg Day</span>
+                <button class="start-btn">Start</button>
+              </div>
+              <div class="tpl-meta">5 exercises · last done Monday</div>
+              <div class="tpl-preview">Squat · Romanian Deadlift · Leg Press · Leg Curl · Calf Raise</div>
+            </div>
+
+            <button class="new-tpl">+ New template</button>
+            <button class="empty-start">Start an empty workout</button>
+          </div>
+        </div>
+
+        <!-- Editor view -->
+        <div class="view" id="editorView">
+          <div class="navbar-row">
+            <button class="back" data-back>Workout</button>
+            <button class="save-btn" data-back>Save</button>
+          </div>
+          <div class="screen-scroll">
+            <input class="name-input" value="Push Day" aria-label="Template name">
+
+            <div class="ed-row">
+              <span class="drag">≡</span>
+              <div class="ed-text">
+                <div class="ed-name">Bench Press</div>
+                <div class="ed-meta">4 sets · rest <b>3:00</b></div>
+              </div>
+              <span class="ed-chev">›</span>
+            </div>
+            <div class="ed-row">
+              <span class="drag">≡</span>
+              <div class="ed-text">
+                <div class="ed-name">Incline Dumbbell Press</div>
+                <div class="ed-meta">3 sets · rest <b>1:30</b></div>
+              </div>
+              <span class="ed-chev">›</span>
+            </div>
+            <div class="ed-row">
+              <span class="drag">≡</span>
+              <div class="ed-text">
+                <div class="ed-name">Overhead Press</div>
+                <div class="ed-meta">4 sets · rest <b>2:30</b></div>
+              </div>
+              <span class="ed-chev">›</span>
+            </div>
+            <div class="ed-row">
+              <span class="drag">≡</span>
+              <div class="ed-text">
+                <div class="ed-name">Chest Fly (Cable)</div>
+                <div class="ed-meta">3 sets · rest <b>1:30</b></div>
+              </div>
+              <span class="ed-chev">›</span>
+            </div>
+            <div class="ed-row">
+              <span class="drag">≡</span>
+              <div class="ed-text">
+                <div class="ed-name">Lateral Raise</div>
+                <div class="ed-meta">3 sets · rest <b>1:00</b></div>
+              </div>
+              <span class="ed-chev">›</span>
+            </div>
+
+            <button class="add-ex">+ Add exercise</button>
+            <p class="ed-note">Templates set the structure. Weights and reps aren't stored here — each workout starts from whatever you did last session.</p>
+          </div>
+        </div>
+
+        <div class="tabbar">
+          <button class="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>
+            History
+          </button>
+          <button class="tab active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12h16M7 8.5v7M17 8.5v7M4.5 10v4M19.5 10v4"/></svg>
+            Workout
+          </button>
+          <button class="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 6.5h14M5 12h14M5 17.5h9"/></svg>
+            Exercises
+          </button>
+          <button class="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.4"/><path d="M5.5 19c1.2-3 3.6-4.5 6.5-4.5S17.3 16 18.5 19"/></svg>
+            Profile
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-card">
+        <h2>Template list</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Start is one tap</span><span class="legend-sub">The button on every card jumps straight into logging with last session's numbers loaded.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Card preview</span><span class="legend-sub">Exercise names and last-done recency answer "which one is today?" without opening anything.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Empty workout</span><span class="legend-sub">A quiet text action — present but out of the way, since sessions almost always start from a template.</span></div></div>
+      </div>
+      <div class="spec-card">
+        <h2>Editor</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Structure only</span><span class="legend-sub">Exercises, set counts, per-exercise rest. No target weights — those auto-carry from history.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Drag to reorder</span><span class="legend-sub">The ≡ handle reorders; tapping a row opens set count + rest pickers.</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const listView = document.getElementById('listView');
+  const editorView = document.getElementById('editorView');
+  document.querySelectorAll('[data-open]').forEach(card =>
+    card.addEventListener('click', e => {
+      if (e.target.closest('.start-btn')) return;
+      listView.classList.remove('active');
+      editorView.classList.add('active');
+    }));
+  document.querySelectorAll('[data-back]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      editorView.classList.remove('active');
+      listView.classList.add('active');
+    }));
+</script>
