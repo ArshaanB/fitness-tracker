@@ -1,0 +1,363 @@
+<title>Fitness Tracker — Exercise Detail Mockup</title>
+<style>
+  :root {
+    --pg-bg: #F6F7F9;
+    --pg-ink: #14202E;
+    --pg-ink-2: #5C6878;
+    --pg-hairline: #E2E6EC;
+    --pg-card: #FFFFFF;
+    --pg-accent: #0A5CFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pg-bg: #10151C; --pg-ink: #E8EDF4; --pg-ink-2: #8B97A6;
+      --pg-hairline: #232B36; --pg-card: #171E27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --pg-bg: #10151C; --pg-ink: #E8EDF4; --pg-ink-2: #8B97A6;
+    --pg-hairline: #232B36; --pg-card: #171E27;
+  }
+
+  body {
+    background: var(--pg-bg); color: var(--pg-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 40px 20px 72px; -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 960px; margin: 0 auto; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-accent); margin: 0 0 8px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
+  .lede { font-size: 15px; line-height: 1.55; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 6px; }
+  .hint { font-size: 13px; line-height: 1.5; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 36px; }
+  .hint strong { color: var(--pg-ink); font-weight: 600; }
+  .stage { display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; justify-content: center; }
+
+  .spec { flex: 1 1 280px; max-width: 340px; display: flex; flex-direction: column; gap: 16px; }
+  .spec-card { background: var(--pg-card); border: 1px solid var(--pg-hairline); border-radius: 14px; padding: 18px 18px 16px; }
+  .spec-card h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-ink-2); margin: 0 0 14px; }
+  .legend-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .legend-row + .legend-row { border-top: 1px solid var(--pg-hairline); }
+  .legend-label { font-size: 13.5px; font-weight: 600; }
+  .legend-sub { font-size: 12px; color: var(--pg-ink-2); }
+  .legend-text { display: flex; flex-direction: column; gap: 1px; }
+
+  /* Phone */
+  .phone-wrap { flex: 0 0 auto; }
+  .phone {
+    width: 393px; height: 780px;
+    background: linear-gradient(180deg, #EBF1F9 0%, #F3F6FB 40%, #F5F7FB 100%);
+    border-radius: 44px; border: 1px solid #D8DDE5;
+    box-shadow: 0 24px 60px rgba(16, 26, 44, 0.16), 0 2px 8px rgba(16, 26, 44, 0.08);
+    overflow: hidden; position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    color: #0E1726; display: flex; flex-direction: column;
+  }
+  .phone * { box-sizing: border-box; }
+  .statusbar { height: 50px; flex: 0 0 auto; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 6px; font-size: 14px; font-weight: 600; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 118px; height: 32px; background: #0B0F14; border-radius: 18px; }
+
+  .navbar { flex: 0 0 auto; padding: 6px 18px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .back { display: inline-flex; align-items: center; gap: 3px; color: #0A5CFF; font-size: 14.5px; font-weight: 550; }
+  .back::before { content: "‹"; font-size: 22px; line-height: 1; }
+  .navbar b { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+
+  .screen-scroll { flex: 1 1 auto; overflow-y: auto; padding: 2px 14px 40px; scrollbar-width: none; }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  /* Records tiles */
+  .records { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .rec {
+    background: #fff; border-radius: 16px; padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 8px 22px rgba(16, 38, 74, 0.07);
+  }
+  .rec b { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .rec b small { font-size: 13px; font-weight: 600; color: #6B7688; }
+  .rec span { font-size: 11.5px; color: #6B7688; }
+  .rec.hero { grid-column: span 2; display: flex; align-items: center; justify-content: space-between; }
+  .rec.hero b { font-size: 28px; }
+  .hero-ring {
+    width: 44px; height: 44px; border-radius: 50%; position: relative; flex: 0 0 auto;
+    background: conic-gradient(#FF453A, #FFB020, #F7E733, #2DBE5F, #38C7D8, #0A5CFF, #9D5CFF, #FF453A);
+    animation: ringspin 3.2s linear infinite;
+  }
+  .hero-ring::after { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: #fff; }
+  @keyframes ringspin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .hero-ring { animation: none; } }
+
+  /* Chart card */
+  .chart-card {
+    background: #fff; border-radius: 18px; padding: 14px 14px 8px; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 8px 22px rgba(16, 38, 74, 0.07);
+  }
+  .seg {
+    display: flex; background: #EAEFF7; border-radius: 10px; padding: 3px; margin-bottom: 10px;
+  }
+  .seg button {
+    flex: 1; border: none; background: transparent; border-radius: 8px;
+    font-size: 12.5px; font-weight: 600; color: #6B7688; padding: 6px 0; cursor: pointer; font-family: inherit;
+  }
+  .seg button.active { background: #fff; color: #0E1726; box-shadow: 0 1px 3px rgba(16, 38, 74, 0.12); }
+  .chart-wrap { position: relative; }
+  .chart-wrap svg { display: block; width: 100%; height: auto; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none;
+    background: #0E1726; color: #fff; border-radius: 9px; padding: 6px 10px;
+    font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap;
+    transform: translate(-50%, -130%);
+  }
+  .tooltip b { font-size: 13px; font-weight: 700; display: block; }
+
+  /* Session history */
+  .sec-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #98A1AF; margin: 14px 6px 8px; }
+  .session {
+    background: #fff; border-radius: 16px; padding: 12px 14px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 8px 22px rgba(16, 38, 74, 0.07);
+  }
+  .ring {
+    width: 26px; height: 26px; border-radius: 50%; position: relative; flex: 0 0 auto;
+    background: conic-gradient(var(--ring-color, #E4E8EF) calc(var(--pct, 0) * 1%), #E9ECF1 0);
+  }
+  .ring::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+  .ring.rainbow {
+    background: conic-gradient(#FF453A, #FFB020, #F7E733, #2DBE5F, #38C7D8, #0A5CFF, #9D5CFF, #FF453A);
+    animation: ringspin 3.2s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .ring.rainbow { animation: none; } }
+  .session-text { flex: 1; min-width: 0; }
+  .session-date { font-size: 14px; font-weight: 650; margin-bottom: 1px; }
+  .session-sets { font-size: 12.5px; color: #8B94A3; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session-e1rm { font-size: 13px; font-weight: 650; color: #6B7688; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+
+  @media (max-width: 500px) {
+    .phone { width: 100%; max-width: 393px; height: 720px; }
+    body { padding: 24px 12px 48px; }
+  }
+</style>
+
+<div class="page">
+  <p class="eyebrow">Fitness Tracker · Design · Mockup 03</p>
+  <h1>Exercise detail</h1>
+  <p class="lede">The analytical heart of a single movement: records up top, a progress chart in the middle, full session history below. This same page opens mid-workout when you tap an exercise.</p>
+  <p class="hint"><strong>It's live:</strong> switch the chart between <strong>Est. 1RM / Heaviest / Volume</strong>, and hover (or drag on touch) across the line for exact values per session.</p>
+
+  <div class="stage">
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀙈 􀋨</span></div>
+        <div class="navbar">
+          <span class="back">Exercises</span>
+          <b>Bench Press</b>
+        </div>
+
+        <div class="screen-scroll">
+          <div class="records">
+            <div class="rec hero">
+              <div>
+                <b>297 <small>lbs</small></b>
+                <span>Best est. 1RM · set today</span>
+              </div>
+              <span class="hero-ring"></span>
+            </div>
+            <div class="rec"><b>245 <small>lbs</small></b><span>Heaviest weight</span></div>
+            <div class="rec"><b>235 <small>× 8</small></b><span>Best set</span></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="seg" id="seg">
+              <button class="active" data-metric="e1rm">Est. 1RM</button>
+              <button data-metric="heaviest">Heaviest</button>
+              <button data-metric="volume">Volume</button>
+            </div>
+            <div class="chart-wrap" id="chartWrap">
+              <svg id="chart" viewBox="0 0 360 190" role="img" aria-label="Progress chart"></svg>
+              <div class="tooltip" id="tooltip"></div>
+            </div>
+          </div>
+
+          <p class="sec-label">Sessions</p>
+
+          <div class="session" data-best="290" data-w="235" data-r="8">
+            <span class="ring"></span>
+            <div class="session-text">
+              <div class="session-date">Friday, Aug 8</div>
+              <div class="session-sets">205×8 · 215×8 · 225×8 · 235×8</div>
+            </div>
+            <span class="session-e1rm">297 e1RM</span>
+          </div>
+
+          <div class="session" data-best="290" data-w="225" data-r="8">
+            <span class="ring"></span>
+            <div class="session-text">
+              <div class="session-date">Friday, Aug 1</div>
+              <div class="session-sets">205×8 · 215×8 · 225×8 · 225×6</div>
+            </div>
+            <span class="session-e1rm">285 e1RM</span>
+          </div>
+
+          <div class="session" data-best="290" data-w="225" data-r="7">
+            <span class="ring"></span>
+            <div class="session-text">
+              <div class="session-date">Friday, Jul 25</div>
+              <div class="session-sets">200×8 · 215×8 · 225×7 · 225×5</div>
+            </div>
+            <span class="session-e1rm">278 e1RM</span>
+          </div>
+
+          <div class="session" data-best="290" data-w="215" data-r="8">
+            <span class="ring"></span>
+            <div class="session-text">
+              <div class="session-date">Friday, Jul 18</div>
+              <div class="session-sets">195×8 · 205×8 · 215×8 · 215×6</div>
+            </div>
+            <span class="session-e1rm">272 e1RM</span>
+          </div>
+
+          <div class="session" data-best="290" data-w="205" data-r="9">
+            <span class="ring"></span>
+            <div class="session-text">
+              <div class="session-date">Friday, Jul 11</div>
+              <div class="session-sets">190×8 · 200×9 · 205×9 · 205×7</div>
+            </div>
+            <span class="session-e1rm">267 e1RM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-card">
+        <h2>Layout</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Hero record</span><span class="legend-sub">Best est. 1RM leads — it's the intensity ring's baseline, so it's the number that defines the exercise.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">One chart, three lenses</span><span class="legend-sub">Segmented control switches the metric; single blue line, no legend needed.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Session rows</span><span class="legend-sub">Each row carries its best-set ring — scan the column of rings to see progress at a glance.</span></div></div>
+      </div>
+      <div class="spec-card">
+        <h2>Chart spec</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">2px line, soft area fill</span><span class="legend-sub">Accent blue only; faint horizontal grid; endpoint emphasized with a dot and value.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Crosshair + tooltip</span><span class="legend-sub">Hover/drag snaps to the nearest session and shows date and exact value.</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DATA = {
+    e1rm: {
+      label: 'Est. 1RM', unit: 'lbs',
+      values: [255, 258, 262, 260, 266, 270, 268, 274, 278, 281, 285, 297],
+      fmt: v => `${v} lbs`
+    },
+    heaviest: {
+      label: 'Heaviest', unit: 'lbs',
+      values: [215, 220, 225, 225, 230, 230, 235, 235, 240, 240, 245, 245],
+      fmt: v => `${v} lbs`
+    },
+    volume: {
+      label: 'Volume', unit: 'lbs',
+      values: [10200, 11000, 10600, 11800, 12100, 11600, 12900, 13400, 12800, 13900, 14200, 14820],
+      fmt: v => `${(v / 1000).toFixed(1)}k lbs`
+    }
+  };
+  const LABELS = ['Feb 6', 'Feb 20', 'Mar 6', 'Mar 20', 'Apr 3', 'Apr 17', 'May 1', 'May 15', 'Jun 5', 'Jun 26', 'Jul 17', 'Aug 8'];
+
+  const svg = document.getElementById('chart');
+  const wrap = document.getElementById('chartWrap');
+  const tooltip = document.getElementById('tooltip');
+  const PAD = { l: 44, r: 14, t: 14, b: 26 };
+  const W = 360, H = 190;
+  let current = 'e1rm';
+  let points = [];
+
+  function render(metric) {
+    current = metric;
+    const d = DATA[metric];
+    const vals = d.values;
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = (max - min) || 1;
+    const lo = min - range * 0.15, hi = max + range * 0.15;
+    const x = i => PAD.l + (i / (vals.length - 1)) * (W - PAD.l - PAD.r);
+    const y = v => PAD.t + (1 - (v - lo) / (hi - lo)) * (H - PAD.t - PAD.b);
+    points = vals.map((v, i) => ({ px: x(i), py: y(v), v, label: LABELS[i] }));
+
+    const line = points.map((p, i) => `${i ? 'L' : 'M'}${p.px.toFixed(1)},${p.py.toFixed(1)}`).join('');
+    const area = `${line}L${points[points.length - 1].px.toFixed(1)},${H - PAD.b}L${PAD.l},${H - PAD.b}Z`;
+
+    const ticks = [0.25, 0.6, 0.95].map(t => {
+      const v = lo + t * (hi - lo);
+      const snapped = DATA[metric] === DATA.volume ? Math.round(v / 500) * 500 : Math.round(v / 5) * 5;
+      return { v: snapped, py: y(snapped) };
+    });
+
+    const last = points[points.length - 1];
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0A5CFF" stop-opacity="0.14"/>
+          <stop offset="1" stop-color="#0A5CFF" stop-opacity="0.01"/>
+        </linearGradient>
+      </defs>
+      ${ticks.map(t => `
+        <line x1="${PAD.l}" x2="${W - PAD.r}" y1="${t.py.toFixed(1)}" y2="${t.py.toFixed(1)}" stroke="#EDF0F5" stroke-width="1"/>
+        <text x="${PAD.l - 7}" y="${(t.py + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="#98A1AF" font-variant="tabular-nums">${metric === 'volume' ? (t.v / 1000).toFixed(1) + 'k' : t.v}</text>`).join('')}
+      <text x="${PAD.l}" y="${H - 8}" font-size="9.5" fill="#98A1AF">${LABELS[0]}</text>
+      <text x="${W - PAD.r}" y="${H - 8}" text-anchor="end" font-size="9.5" fill="#98A1AF">${LABELS[LABELS.length - 1]}</text>
+      <path d="${area}" fill="url(#areaFill)"/>
+      <path d="${line}" fill="none" stroke="#0A5CFF" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <g id="cross" style="display:none">
+        <line id="crossLine" y1="${PAD.t}" y2="${H - PAD.b}" stroke="#C6D2E4" stroke-width="1"/>
+        <circle id="crossDot" r="4.5" fill="#0A5CFF" stroke="#fff" stroke-width="2"/>
+      </g>
+      <circle cx="${last.px.toFixed(1)}" cy="${last.py.toFixed(1)}" r="4.5" fill="#0A5CFF" stroke="#fff" stroke-width="2"/>
+      <text x="${(last.px - 8).toFixed(1)}" y="${(last.py - 10).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="#0E1726">${d.fmt(last.v)}</text>
+    `;
+  }
+
+  function onMove(clientX) {
+    const rect = svg.getBoundingClientRect();
+    const px = ((clientX - rect.left) / rect.width) * W;
+    let nearest = points[0];
+    for (const p of points) if (Math.abs(p.px - px) < Math.abs(nearest.px - px)) nearest = p;
+    const cross = svg.querySelector('#cross');
+    cross.style.display = 'block';
+    cross.querySelector('#crossLine').setAttribute('x1', nearest.px);
+    cross.querySelector('#crossLine').setAttribute('x2', nearest.px);
+    const dot = cross.querySelector('#crossDot');
+    dot.setAttribute('cx', nearest.px);
+    dot.setAttribute('cy', nearest.py);
+    tooltip.style.display = 'block';
+    tooltip.style.left = `${(nearest.px / W) * rect.width}px`;
+    tooltip.style.top = `${(nearest.py / H) * rect.height}px`;
+    tooltip.innerHTML = `${nearest.label}<b>${DATA[current].fmt(nearest.v)}</b>`;
+  }
+  function onLeave() {
+    svg.querySelector('#cross').style.display = 'none';
+    tooltip.style.display = 'none';
+  }
+  wrap.addEventListener('mousemove', e => onMove(e.clientX));
+  wrap.addEventListener('mouseleave', onLeave);
+  wrap.addEventListener('touchmove', e => { onMove(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  wrap.addEventListener('touchend', onLeave);
+
+  document.querySelectorAll('#seg button').forEach(btn =>
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#seg button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render(btn.dataset.metric);
+    }));
+
+  // Session rings: best-set e1RM vs all-time best
+  const EPLEY = (w, r) => w * (1 + r / 30);
+  document.querySelectorAll('.session').forEach(s => {
+    const pct = (EPLEY(+s.dataset.w, +s.dataset.r) / +s.dataset.best) * 100;
+    const ring = s.querySelector('.ring');
+    if (pct >= 100) ring.classList.add('rainbow');
+    else {
+      ring.style.setProperty('--pct', Math.max(6, Math.min(pct, 100)).toFixed(1));
+      ring.style.setProperty('--ring-color', pct < 70 ? '#FF453A' : pct < 90 ? '#FFB020' : '#2DBE5F');
+    }
+  });
+
+  render('e1rm');
+</script>

@@ -35,11 +35,15 @@ Interactive HTML mockups live in `design/mockups/`. Each is a self-contained pag
 
 | # | Screen | File | Status |
 |---|---|---|---|
-| 01 | Workout logging (+ rest timer, finish sheet) | [design/mockups/01-logging.html](design/mockups/01-logging.html) | Rev 2 — feedback applied (no supersets, no × in previous column, wider check, ±10s rest adjust, warmer ground) |
-| 02 | History feed | — | Not started |
-| 03 | Exercise detail (records, charts, history) | — | Not started |
+| 01 | Workout logging (+ rest timer, finish sheet) | [design/mockups/01-logging.html](design/mockups/01-logging.html) | Rev 3 — previous column now "205 × 8" (light × reps); rev 2 dropped supersets/steppers, added ±10s rest adjust, warmer ground |
+| 02 | History feed (+ tab bar) | [design/mockups/02-history.html](design/mockups/02-history.html) | First draft — awaiting review |
+| 03 | Exercise detail (records, chart, history) | [design/mockups/03-exercise-detail.html](design/mockups/03-exercise-detail.html) | First draft — awaiting review |
 | 04 | Templates list + editor | — | Not started |
-| 05 | Streaks + body weight | — | Not started |
+| 05 | Profile: streaks + body weight | — | Not started |
+
+## Navigation (established in mockup 02)
+
+Four tabs: **History** (feed) · **Workout** (start template / active session) · **Exercises** (library) · **Profile** (streaks, body weight, settings).
 
 ## Review workflow
 

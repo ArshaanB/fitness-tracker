@@ -1,0 +1,237 @@
+<title>Fitness Tracker — History Mockup</title>
+<style>
+  :root {
+    --pg-bg: #F6F7F9;
+    --pg-ink: #14202E;
+    --pg-ink-2: #5C6878;
+    --pg-hairline: #E2E6EC;
+    --pg-card: #FFFFFF;
+    --pg-accent: #0A5CFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pg-bg: #10151C; --pg-ink: #E8EDF4; --pg-ink-2: #8B97A6;
+      --pg-hairline: #232B36; --pg-card: #171E27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --pg-bg: #10151C; --pg-ink: #E8EDF4; --pg-ink-2: #8B97A6;
+    --pg-hairline: #232B36; --pg-card: #171E27;
+  }
+
+  body {
+    background: var(--pg-bg); color: var(--pg-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 40px 20px 72px; -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 960px; margin: 0 auto; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-accent); margin: 0 0 8px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
+  .lede { font-size: 15px; line-height: 1.55; color: var(--pg-ink-2); max-width: 58ch; margin: 0 0 36px; }
+  .stage { display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; justify-content: center; }
+
+  .spec { flex: 1 1 280px; max-width: 340px; display: flex; flex-direction: column; gap: 16px; }
+  .spec-card { background: var(--pg-card); border: 1px solid var(--pg-hairline); border-radius: 14px; padding: 18px 18px 16px; }
+  .spec-card h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pg-ink-2); margin: 0 0 14px; }
+  .legend-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .legend-row + .legend-row { border-top: 1px solid var(--pg-hairline); }
+  .legend-label { font-size: 13.5px; font-weight: 600; }
+  .legend-sub { font-size: 12px; color: var(--pg-ink-2); }
+  .legend-text { display: flex; flex-direction: column; gap: 1px; }
+
+  /* Phone */
+  .phone-wrap { flex: 0 0 auto; }
+  .phone {
+    width: 393px; height: 780px;
+    background: linear-gradient(180deg, #EBF1F9 0%, #F3F6FB 40%, #F5F7FB 100%);
+    border-radius: 44px; border: 1px solid #D8DDE5;
+    box-shadow: 0 24px 60px rgba(16, 26, 44, 0.16), 0 2px 8px rgba(16, 26, 44, 0.08);
+    overflow: hidden; position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    color: #0E1726; display: flex; flex-direction: column;
+  }
+  .phone * { box-sizing: border-box; }
+  .statusbar { height: 50px; flex: 0 0 auto; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 6px; font-size: 14px; font-weight: 600; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 118px; height: 32px; background: #0B0F14; border-radius: 18px; }
+
+  .navbar { flex: 0 0 auto; padding: 8px 18px 12px; }
+  .navbar b { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+
+  .screen-scroll { flex: 1 1 auto; overflow-y: auto; padding: 2px 14px 110px; scrollbar-width: none; }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  .month-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 10px 6px 8px; font-size: 13px; font-weight: 650; color: #6B7688;
+  }
+  .month-head span { font-size: 12px; font-weight: 500; color: #98A1AF; font-variant-numeric: tabular-nums; }
+
+  .workout-card {
+    background: #fff; border-radius: 18px; margin-bottom: 12px; padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(16, 38, 74, 0.05), 0 8px 22px rgba(16, 38, 74, 0.07);
+    cursor: pointer;
+  }
+  .workout-card:active { transform: scale(0.99); }
+  .wc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .wc-title { font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; }
+  .pr-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #FFF7E8; border-radius: 999px; padding: 4px 10px;
+    font-size: 11.5px; font-weight: 700; color: #B27B00;
+  }
+  .mini-ring {
+    width: 14px; height: 14px; border-radius: 50%; position: relative;
+    background: conic-gradient(#FF453A, #FFB020, #F7E733, #2DBE5F, #38C7D8, #0A5CFF, #9D5CFF, #FF453A);
+  }
+  .mini-ring::after { content: ""; position: absolute; inset: 3.5px; border-radius: 50%; background: #FFF7E8; }
+  .wc-date { font-size: 13px; color: #98A1AF; margin-bottom: 10px; }
+  .wc-stats {
+    display: flex; gap: 14px; font-size: 13px; color: #6B7688;
+    font-variant-numeric: tabular-nums; margin-bottom: 10px;
+  }
+  .wc-stats b { font-weight: 650; color: #0E1726; }
+  .wc-exercises { border-top: 1px solid #EFF2F7; padding-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+  .wc-ex { display: flex; justify-content: space-between; font-size: 13.5px; }
+  .wc-ex .ex-name { color: #3A4557; font-weight: 550; }
+  .wc-ex .ex-best { color: #98A1AF; font-variant-numeric: tabular-nums; }
+  .wc-more { font-size: 12.5px; color: #0A5CFF; font-weight: 600; }
+
+  /* Tab bar */
+  .tabbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 88px;
+    background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid #E7EAF0; border-radius: 0 0 44px 44px;
+    display: flex; padding: 10px 10px 26px;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: #98A1AF; font-size: 10.5px; font-weight: 600; cursor: pointer; border: none; background: none; font-family: inherit;
+  }
+  .tab.active { color: #0A5CFF; }
+  .tab svg { width: 25px; height: 25px; }
+
+  @media (max-width: 500px) {
+    .phone { width: 100%; max-width: 393px; height: 720px; }
+    body { padding: 24px 12px 48px; }
+  }
+</style>
+
+<div class="page">
+  <p class="eyebrow">Fitness Tracker · Design · Mockup 02</p>
+  <h1>History feed</h1>
+  <p class="lede">Chronological workout cards under month headers: duration, volume, and sets up front, the best set per exercise below, and a PR chip when a session set a record. The tab bar establishes the app's four homes.</p>
+
+  <div class="stage">
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀙈 􀋨</span></div>
+        <div class="navbar"><b>History</b></div>
+
+        <div class="screen-scroll">
+          <div class="month-head">August 2026 <span>6 workouts · 4:52 total</span></div>
+
+          <div class="workout-card">
+            <div class="wc-top">
+              <span class="wc-title">Push Day</span>
+              <span class="pr-chip"><span class="mini-ring"></span>1 PR</span>
+            </div>
+            <div class="wc-date">Friday, Aug 8 · 9:02 AM</div>
+            <div class="wc-stats"><span><b>51:26</b> duration</span><span><b>14,820</b> lbs</span><span><b>13</b> sets</span></div>
+            <div class="wc-exercises">
+              <div class="wc-ex"><span class="ex-name">Bench Press</span><span class="ex-best">235 × 8</span></div>
+              <div class="wc-ex"><span class="ex-name">Incline Dumbbell Press</span><span class="ex-best">80 × 10</span></div>
+              <div class="wc-ex"><span class="ex-name">Overhead Press</span><span class="ex-best">115 × 8</span></div>
+              <span class="wc-more">+2 more</span>
+            </div>
+          </div>
+
+          <div class="workout-card">
+            <div class="wc-top"><span class="wc-title">Pull Day</span></div>
+            <div class="wc-date">Wednesday, Aug 6 · 8:47 AM</div>
+            <div class="wc-stats"><span><b>48:02</b> duration</span><span><b>12,340</b> lbs</span><span><b>12</b> sets</span></div>
+            <div class="wc-exercises">
+              <div class="wc-ex"><span class="ex-name">Deadlift</span><span class="ex-best">315 × 5</span></div>
+              <div class="wc-ex"><span class="ex-name">Barbell Row</span><span class="ex-best">185 × 8</span></div>
+              <div class="wc-ex"><span class="ex-name">Lat Pulldown</span><span class="ex-best">160 × 10</span></div>
+              <span class="wc-more">+2 more</span>
+            </div>
+          </div>
+
+          <div class="workout-card">
+            <div class="wc-top">
+              <span class="wc-title">Leg Day</span>
+              <span class="pr-chip"><span class="mini-ring"></span>2 PRs</span>
+            </div>
+            <div class="wc-date">Monday, Aug 4 · 9:15 AM</div>
+            <div class="wc-stats"><span><b>56:11</b> duration</span><span><b>16,090</b> lbs</span><span><b>14</b> sets</span></div>
+            <div class="wc-exercises">
+              <div class="wc-ex"><span class="ex-name">Squat</span><span class="ex-best">275 × 6</span></div>
+              <div class="wc-ex"><span class="ex-name">Romanian Deadlift</span><span class="ex-best">225 × 8</span></div>
+              <div class="wc-ex"><span class="ex-name">Leg Press</span><span class="ex-best">450 × 10</span></div>
+              <span class="wc-more">+2 more</span>
+            </div>
+          </div>
+
+          <div class="workout-card">
+            <div class="wc-top"><span class="wc-title">Push Day</span></div>
+            <div class="wc-date">Friday, Aug 1 · 8:55 AM</div>
+            <div class="wc-stats"><span><b>49:38</b> duration</span><span><b>14,120</b> lbs</span><span><b>13</b> sets</span></div>
+            <div class="wc-exercises">
+              <div class="wc-ex"><span class="ex-name">Bench Press</span><span class="ex-best">225 × 8</span></div>
+              <div class="wc-ex"><span class="ex-name">Incline Dumbbell Press</span><span class="ex-best">75 × 10</span></div>
+              <span class="wc-more">+3 more</span>
+            </div>
+          </div>
+
+          <div class="month-head">July 2026 <span>12 workouts · 9:47 total</span></div>
+
+          <div class="workout-card">
+            <div class="wc-top"><span class="wc-title">Pull Day</span></div>
+            <div class="wc-date">Wednesday, Jul 30 · 9:05 AM</div>
+            <div class="wc-stats"><span><b>47:15</b> duration</span><span><b>12,050</b> lbs</span><span><b>12</b> sets</span></div>
+            <div class="wc-exercises">
+              <div class="wc-ex"><span class="ex-name">Deadlift</span><span class="ex-best">305 × 5</span></div>
+              <div class="wc-ex"><span class="ex-name">Barbell Row</span><span class="ex-best">185 × 7</span></div>
+              <span class="wc-more">+3 more</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabbar">
+          <button class="tab active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>
+            History
+          </button>
+          <button class="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12h16M7 8.5v7M17 8.5v7M4.5 10v4M19.5 10v4"/></svg>
+            Workout
+          </button>
+          <button class="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 6.5h14M5 12h14M5 17.5h9"/></svg>
+            Exercises
+          </button>
+          <button class="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.4"/><path d="M5.5 19c1.2-3 3.6-4.5 6.5-4.5S17.3 16 18.5 19"/></svg>
+            Profile
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-card">
+        <h2>Card anatomy</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Stats row</span><span class="legend-sub">Duration · volume · sets — the three numbers that summarize a session.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Best set per exercise</span><span class="legend-sub">Top three exercises with their best set; the rest collapse behind "+N more".</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">PR chip</span><span class="legend-sub">Mini rainbow ring + count — records earn the only loud color on the card.</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Month headers</span><span class="legend-sub">Workout count and total time per month give lightweight consistency context.</span></div></div>
+      </div>
+      <div class="spec-card">
+        <h2>Navigation</h2>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Four tabs</span><span class="legend-sub">History · Workout (start/active session) · Exercises (library) · Profile (streaks, body weight, settings).</span></div></div>
+        <div class="legend-row"><div class="legend-text"><span class="legend-label">Tap a card</span><span class="legend-sub">Opens the full workout for review and editing (fully editable history).</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
