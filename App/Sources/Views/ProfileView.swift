@@ -5,7 +5,9 @@ import UniformTypeIdentifiers
 
 struct ProfileView: View {
     @Environment(AppModel.self) private var model
+    @Environment(SyncModel.self) private var sync
 
+    @State private var showAuth = false
     @State private var showImporter = false
     @State private var importMessage: String?
     @State private var showWeightSheet = false
@@ -31,6 +33,7 @@ struct ProfileView: View {
                     tiles
                     frequencyCard
                     bodyWeightCard
+                    accountCard
                     settingsCard
                 }
                 .padding(.horizontal, 14)
@@ -38,6 +41,9 @@ struct ProfileView: View {
             }
             .appBackground()
             .navigationTitle("Profile")
+            .sheet(isPresented: $showAuth) {
+                AuthSheet()
+            }
             .sheet(isPresented: $showWeightSheet) {
                 LogWeightSheet(lastWeight: model.bodyWeights.last?.weight)
             }
@@ -254,6 +260,82 @@ struct ProfileView: View {
         guard let min = values.min(), let max = values.max() else { return 0...1 }
         let pad = Swift.max((max - min) * 0.2, 2)
         return (min - pad)...(max + pad)
+    }
+
+    // MARK: - Account & backup
+
+    private var accountCard: some View {
+        VStack(spacing: 0) {
+            if sync.status == .signedOut {
+                Button {
+                    showAuth = true
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Sign in to back up")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.ink)
+                            Text("Your history syncs to the cloud and restores on any new phone.")
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                        Spacer()
+                        Image(systemName: "icloud")
+                            .font(.title3)
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .padding(14)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(sync.email ?? "Signed in")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(backupStatusText)
+                            .font(.caption)
+                            .foregroundStyle(statusIsError ? Theme.ringLow : Theme.inkTertiary)
+                    }
+                    Spacer()
+                    if sync.status == .syncing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Back up now") { Task { await sync.push() } }
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+                .padding(14)
+                Divider().overlay(Theme.hairline).padding(.leading, 14)
+                Button {
+                    Task { await sync.signOut() }
+                } label: {
+                    Text("Sign out")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.ringLow)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .cardStyle()
+    }
+
+    private var statusIsError: Bool {
+        if case .error = sync.status { return true }
+        return false
+    }
+
+    private var backupStatusText: String {
+        if case .error(let message) = sync.status { return message }
+        if let last = sync.lastSyncedAt {
+            return "Backed up \(last.formatted(.relative(presentation: .named)))"
+        }
+        return "Not backed up yet"
     }
 
     // MARK: - Settings

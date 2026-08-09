@@ -6,6 +6,9 @@ options:
 packages:
   FitnessKit:
     path: ../FitnessKit
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.0.0"
 targets:
   FitnessTracker:
     type: application
@@ -20,6 +23,8 @@ targets:
         buildPhase: resources
     dependencies:
       - package: FitnessKit
+      - package: Supabase
+        product: Supabase
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

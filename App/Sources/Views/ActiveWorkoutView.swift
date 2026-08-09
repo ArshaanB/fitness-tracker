@@ -113,6 +113,7 @@ struct ActiveWorkoutView: View {
                 } label: {
                     Label("Discard Workout", systemImage: "trash")
                 }
+                .tint(.red)  // app-wide accent otherwise recolors the icon
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.footnote.weight(.bold))

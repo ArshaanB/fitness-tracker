@@ -77,8 +77,46 @@ public enum AppDatabase {
             }
         }
 
+        migrator.registerMigration("v2-outbox") { db in
+            // Sync outbox, fed entirely by SQLite triggers: every insert/update/
+            // delete on a synced table queues here, no Swift plumbing at any
+            // call site. SyncEngine drains it to Supabase when online.
+            try db.create(table: "outbox") { t in
+                t.autoIncrementedPrimaryKey("seq")
+                t.column("tbl", .text).notNull()
+                t.column("rowId", .text).notNull()
+                t.column("op", .text).notNull()  // 'upsert' | 'delete'
+            }
+            for table in Self.syncedTables {
+                try db.execute(sql: """
+                    CREATE TRIGGER \(table)_outbox_i AFTER INSERT ON \(table) BEGIN
+                      INSERT INTO outbox(tbl, rowId, op) VALUES('\(table)', NEW.id, 'upsert');
+                    END;
+                    CREATE TRIGGER \(table)_outbox_u AFTER UPDATE ON \(table) BEGIN
+                      INSERT INTO outbox(tbl, rowId, op) VALUES('\(table)', NEW.id, 'upsert');
+                    END;
+                    CREATE TRIGGER \(table)_outbox_d AFTER DELETE ON \(table) BEGIN
+                      INSERT INTO outbox(tbl, rowId, op) VALUES('\(table)', OLD.id, 'delete');
+                    END;
+                    """)
+            }
+            // Anything already in the database (e.g. an import that predates
+            // this migration) still needs its first backup.
+            for table in Self.syncedTables {
+                try db.execute(sql:
+                    "INSERT INTO outbox(tbl, rowId, op) SELECT '\(table)', id, 'upsert' FROM \(table)")
+            }
+        }
+
         return migrator
     }
+
+    /// Tables that sync to Supabase, in foreign-key dependency order —
+    /// upserts push in this order, deletes in reverse.
+    public static let syncedTables = [
+        "exercise", "template", "templateItem", "workout",
+        "workoutItem", "workoutSet", "bodyWeight", "settings",
+    ]
 
     public static func open(at path: String) throws -> DatabaseQueue {
         let dbQueue = try DatabaseQueue(path: path)

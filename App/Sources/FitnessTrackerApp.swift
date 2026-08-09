@@ -4,12 +4,15 @@ import SwiftUI
 struct FitnessTrackerApp: App {
     @State private var model = AppModel()
     @State private var session = WorkoutSessionModel()
+    @State private var sync = SyncModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environment(model)
                 .environment(session)
+                .environment(sync)
                 .tint(Theme.accent)
                 .task {
                     await model.bootstrap()
@@ -18,6 +21,13 @@ struct FitnessTrackerApp: App {
                         session.resumeIfNeeded(baselines: model.bestE1RMByExerciseId,
                                                repBaselines: model.bestRepsByExerciseId,
                                                exerciseNames: model.exerciseNames)
+                        await sync.configure(db: db)
+                        sync.pushSoon()
+                    }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active || phase == .background {
+                        sync.pushSoon()
                     }
                 }
         }
