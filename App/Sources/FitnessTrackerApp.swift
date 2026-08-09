@@ -50,8 +50,7 @@ struct RootTabView: View {
             ExercisesView()
                 .tabItem { Label("Exercises", systemImage: "list.bullet") }
                 .tag(Tab.exercises)
-            PlaceholderView(title: "Profile",
-                            message: "Streaks, weekly goal, and body weight arrive in a later phase.")
+            ProfileView()
                 .tabItem { Label("Profile", systemImage: "person") }
                 .tag(Tab.profile)
         }

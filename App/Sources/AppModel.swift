@@ -33,6 +33,9 @@ final class AppModel {
     private(set) var exerciseNames: [String: String] = [:]
     private(set) var lastRestByExerciseId: [String: Int] = [:]
     private(set) var templates: [TemplateSummary] = []
+    private(set) var workoutsAscending: [LoadedWorkout] = []
+    private(set) var weeklyGoal = 3
+    private(set) var bodyWeights: [BodyWeightRecord] = []
     private(set) var db: DatabaseQueue?
 
     func bootstrap() async {
@@ -61,7 +64,40 @@ final class AppModel {
         exerciseNames = result.exerciseNames
         lastRestByExerciseId = result.lastRest
         templates = result.templates
+        workoutsAscending = result.workoutsAscending
+        weeklyGoal = result.weeklyGoal
+        bodyWeights = result.bodyWeights
         state = .ready
+    }
+
+    func setWeeklyGoal(_ goal: Int) {
+        guard let db else { return }
+        try? SettingsStore.setWeeklyGoal(goal, in: db)
+        weeklyGoal = max(1, min(goal, 7))
+    }
+
+    func logBodyWeight(_ weight: Double) {
+        guard let db else { return }
+        try? BodyWeightStore.log(weight: weight, in: db)
+        bodyWeights = (try? BodyWeightStore.all(from: db)) ?? bodyWeights
+    }
+
+    /// Imports a Strong CSV chosen in the file picker. Idempotent — re-importing
+    /// the same export skips existing workouts.
+    func importStrongCSV(from url: URL) async -> String {
+        guard let db else { return "Database not ready." }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let summary = try await Task.detached(priority: .userInitiated) {
+                try StrongImporter.run(try StrongImport.parse(csv: text), into: db)
+            }.value
+            try? await reload()
+            return "Imported \(summary.workoutsImported) workouts (\(summary.workoutsSkipped) already present)."
+        } catch {
+            return "Import failed: \(error.localizedDescription)"
+        }
     }
 
     func refresh() {
@@ -97,6 +133,9 @@ final class AppModel {
         let exerciseNames: [String: String]
         let lastRest: [String: Int]
         let templates: [TemplateSummary]
+        let workoutsAscending: [LoadedWorkout]
+        let weeklyGoal: Int
+        let bodyWeights: [BodyWeightRecord]
     }
 
     private nonisolated static func loadEverything(db: DatabaseQueue) throws -> Loaded {
@@ -156,6 +195,9 @@ final class AppModel {
         return Loaded(sections: sections, prCounts: prCounts,
                       exercises: histories, bestE1RM: bestE1RM,
                       exerciseNames: exerciseNames, lastRest: lastRest,
-                      templates: try TemplateStore.loadAll(from: db))
+                      templates: try TemplateStore.loadAll(from: db),
+                      workoutsAscending: workouts,
+                      weeklyGoal: (try SettingsStore.load(from: db)).weeklyGoal,
+                      bodyWeights: try BodyWeightStore.all(from: db))
     }
 }

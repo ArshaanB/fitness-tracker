@@ -88,12 +88,27 @@ struct ActiveWorkoutView: View {
             }
             Spacer()
             Menu {
-                Button("Discard workout", role: .destructive) { showDiscardConfirm = true }
+                Button {
+                    showPicker = true
+                } label: {
+                    Label("Add Exercise", systemImage: "plus")
+                }
+                Divider()
+                Button(role: .destructive) {
+                    showDiscardConfirm = true
+                } label: {
+                    Label("Discard Workout", systemImage: "trash")
+                }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title3)
+                Image(systemName: "ellipsis")
+                    .font(.footnote.weight(.bold))
                     .foregroundStyle(Theme.inkSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(.white, in: Circle())
+                    .shadow(color: Color(red: 16 / 255, green: 38 / 255, blue: 74 / 255).opacity(0.08),
+                            radius: 6, y: 2)
             }
+            .padding(.trailing, 2)
             Button("Finish") { showFinish = true }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
@@ -349,11 +364,10 @@ private struct RestPill: View {
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("REST · \(rest.exerciseName)")
+                            Text("REST")
                                 .font(.system(size: 10.5, weight: .semibold))
                                 .kerning(0.5)
                                 .foregroundStyle(.white.opacity(0.6))
-                                .lineLimit(1)
                             Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(.white)
@@ -390,7 +404,11 @@ private struct RestPill: View {
                     if interval > 0 {
                         try? await Task.sleep(for: .seconds(interval))
                     }
-                    session.clearRest()
+                    // ±10s restarts this task via the id change; the cancelled
+                    // instance must not tear the pill down on its way out.
+                    if !Task.isCancelled {
+                        session.clearRest()
+                    }
                 }
             }
         }

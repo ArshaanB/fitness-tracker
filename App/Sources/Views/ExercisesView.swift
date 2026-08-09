@@ -5,10 +5,15 @@ struct ExercisesView: View {
     @Environment(AppModel.self) private var model
     @State private var search = ""
     @State private var path = NavigationPath()
+    @State private var alphabetical = false
 
     private var filtered: [ExerciseHistory] {
-        guard !search.isEmpty else { return model.exercises }
-        return model.exercises.filter { $0.name.localizedCaseInsensitiveContains(search) }
+        var list = model.exercises  // already sorted by recency
+        if alphabetical {
+            list.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+        guard !search.isEmpty else { return list }
+        return list.filter { $0.name.localizedCaseInsensitiveContains(search) }
     }
 
     var body: some View {
@@ -27,6 +32,23 @@ struct ExercisesView: View {
             }
             .appBackground()
             .navigationTitle("Exercises")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.snappy) { alphabetical.toggle() }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: alphabetical ? "textformat.abc" : "clock")
+                            Text(alphabetical ? "A–Z" : "Recent")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 6)
+                        .background(Theme.accent.opacity(0.09), in: Capsule())
+                    }
+                }
+            }
             .searchable(text: $search, prompt: "Search exercises")
             .navigationDestination(for: String.self) { exerciseId in
                 if let exercise = model.exercises.first(where: { $0.id == exerciseId }) {
