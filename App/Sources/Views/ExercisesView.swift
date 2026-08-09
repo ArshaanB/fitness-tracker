@@ -38,7 +38,7 @@ struct ExercisesView: View {
                         withAnimation(.snappy) { alphabetical.toggle() }
                     } label: {
                         HStack(spacing: 5) {
-                            Image(systemName: alphabetical ? "textformat.abc" : "clock")
+                            Image(systemName: "arrow.up.arrow.down")
                             Text(alphabetical ? "A–Z" : "Recent")
                         }
                         .font(.caption.weight(.semibold))

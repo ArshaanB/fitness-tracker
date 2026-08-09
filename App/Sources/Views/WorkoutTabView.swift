@@ -112,6 +112,7 @@ struct WorkoutTabView: View {
         session.start(template: template,
                       name: template?.name ?? "Workout",
                       baselines: model.bestE1RMByExerciseId,
+                      repBaselines: model.bestRepsByExerciseId,
                       exerciseNames: model.exerciseNames)
         showActive = true
     }

@@ -275,6 +275,6 @@ private struct LogWeightSheet: View {
             }
             .onAppear { focused = true }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.height(240)])
     }
 }

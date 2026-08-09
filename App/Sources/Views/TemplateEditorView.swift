@@ -18,6 +18,7 @@ struct TemplateEditorView: View {
     @State private var name = ""
     @State private var items: [Draft] = []
     @State private var showPicker = false
+    @State private var showDeleteConfirm = false
     @State private var loaded = false
 
     static let restOptions: [Int?] = [nil, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
@@ -30,53 +31,77 @@ struct TemplateEditorView: View {
                         .font(.body.weight(.semibold))
                 }
 
-                Section("Exercises") {
+                Section {
                     ForEach($items) { $item in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(item.name).font(.subheadline.weight(.semibold))
-                            HStack(spacing: 14) {
-                                Stepper("\(item.sets) sets", value: $item.sets, in: 1...10)
-                                    .font(.footnote)
-                                    .fixedSize()
+                        VStack(alignment: .leading, spacing: 9) {
+                            Text(item.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.ink)
+                            HStack {
+                                SetCountStepper(sets: $item.sets)
                                 Spacer()
                                 Menu {
                                     ForEach(Array(Self.restOptions.enumerated()), id: \.offset) { _, option in
                                         Button(restLabel(option)) { item.restSeconds = option }
                                     }
                                 } label: {
-                                    Text("rest \(restLabel(item.restSeconds))")
-                                        .font(.footnote.weight(.semibold))
-                                        .foregroundStyle(Theme.accent)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "timer")
+                                        Text(restLabel(item.restSeconds))
+                                    }
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(Theme.accent)
+                                    .padding(.horizontal, 11)
+                                    .padding(.vertical, 6)
+                                    .background(Theme.accent.opacity(0.09), in: Capsule())
                                 }
                             }
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 4)
                     }
                     .onDelete { items.remove(atOffsets: $0) }
                     .onMove { items.move(fromOffsets: $0, toOffset: $1) }
 
-                    Button("+ Add exercise") { showPicker = true }
-                        .foregroundStyle(Theme.accent)
+                    Button {
+                        showPicker = true
+                    } label: {
+                        Label("Add exercise", systemImage: "plus.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Exercises")
+                } footer: {
+                    Text("Templates set the structure — swipe to remove, drag to reorder. Weights and reps aren't stored here; each workout starts from whatever you did last session.")
                 }
 
-                Section {
-                    Text("Templates set the structure. Weights and reps aren't stored here — each workout starts from whatever you did last session.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkTertiary)
-                        .listRowBackground(Color.clear)
-                } footer: {
-                    if existing != nil {
-                        Button("Delete template", role: .destructive) {
-                            if let existing {
-                                try? TemplateStore.delete(id: existing.id, from: model.db!)
-                                model.refresh()
-                            }
-                            dismiss()
+                if existing != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            Text("Delete Template")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 12)
                     }
                 }
+            }
+            .scrollContentBackground(.hidden)
+            .appBackground()
+            .confirmationDialog("Delete this template?", isPresented: $showDeleteConfirm,
+                                titleVisibility: .visible) {
+                Button("Delete Template", role: .destructive) {
+                    if let existing, let db = model.db {
+                        try? TemplateStore.delete(id: existing.id, from: db)
+                        model.refresh()
+                    }
+                    dismiss()
+                }
+            } message: {
+                Text("Your logged workouts keep their history — only the template goes away.")
             }
             .navigationTitle(existing == nil ? "New Template" : "Edit Template")
             .navigationBarTitleDisplayMode(.inline)
@@ -115,6 +140,41 @@ struct TemplateEditorView: View {
     private func restLabel(_ seconds: Int?) -> String {
         guard let seconds else { return "off" }
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private struct SetCountStepper: View {
+        @Binding var sets: Int
+
+        var body: some View {
+            HStack(spacing: 10) {
+                HStack(spacing: 0) {
+                    stepButton("minus", enabled: sets > 1) { sets -= 1 }
+                    Text("\(sets)")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                        .monospacedDigit()
+                        .frame(width: 30)
+                    stepButton("plus", enabled: sets < 10) { sets += 1 }
+                }
+                .background(Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255), in: Capsule())
+                Text("sets")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+        }
+
+        private func stepButton(_ icon: String, enabled: Bool,
+                                action: @escaping () -> Void) -> some View {
+            Button(action: action) {
+                Image(systemName: icon)
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(enabled ? Theme.accent : Theme.inkTertiary.opacity(0.5))
+                    .frame(width: 34, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .disabled(!enabled)
+        }
     }
 
     private func save() {

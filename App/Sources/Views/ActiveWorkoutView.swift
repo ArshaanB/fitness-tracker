@@ -60,6 +60,7 @@ struct ActiveWorkoutView: View {
                                     name: exercise.name,
                                     restSeconds: model.lastRestByExerciseId[exercise.id],
                                     baseline: model.bestE1RMByExerciseId[exercise.id],
+                                    repBaseline: model.bestRepsByExerciseId[exercise.id],
                                     previous: model.previousWorkingSets(exerciseId: exercise.id))
             }
         }
@@ -349,8 +350,15 @@ private struct SetRow: View {
     }
 
     private var ratio: Double? {
-        guard let e1RM = set.e1RM, let baseline = exercise.baselineE1RM, baseline > 0 else { return nil }
-        return e1RM / baseline
+        if let e1RM = set.e1RM, let baseline = exercise.baselineE1RM, baseline > 0 {
+            return e1RM / baseline
+        }
+        // Bodyweight movements: score reps against the all-time rep record.
+        if exercise.baselineE1RM == nil, set.weight == nil,
+           let reps = set.reps, let baseline = exercise.baselineReps, baseline > 0 {
+            return Double(reps) / Double(baseline)
+        }
+        return nil
     }
 
     private var weightBinding: Binding<String> {

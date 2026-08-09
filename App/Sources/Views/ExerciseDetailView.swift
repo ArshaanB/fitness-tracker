@@ -7,11 +7,16 @@ struct ExerciseDetailView: View {
         case e1rm = "Est. 1RM"
         case heaviest = "Heaviest"
         case volume = "Volume"
+        case reps = "Best reps"
         var id: String { rawValue }
     }
 
     let exercise: ExerciseHistory
     @State private var metric: Metric = .e1rm
+
+    private var availableMetrics: [Metric] {
+        exercise.isRepOnly ? [.reps] : [.e1rm, .heaviest, .volume]
+    }
 
     var body: some View {
         ScrollView {
@@ -28,7 +33,8 @@ struct ExerciseDetailView: View {
                     .padding(.top, 4)
 
                 ForEach(exercise.sessions.reversed()) { session in
-                    SessionRow(session: session, bestE1RM: exercise.bestE1RM)
+                    SessionRow(session: session, bestE1RM: exercise.bestE1RM,
+                               bestReps: exercise.bestReps)
                 }
             }
             .padding(.horizontal, 14)
@@ -37,6 +43,9 @@ struct ExerciseDetailView: View {
         .appBackground()
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            if exercise.isRepOnly { metric = .reps }
+        }
     }
 
     private var recordsGrid: some View {
@@ -48,23 +57,39 @@ struct ExerciseDetailView: View {
                             + Text("lbs").font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.inkSecondary))
                             .foregroundStyle(Theme.ink)
+                        Text("Best est. 1RM").font(.caption).foregroundStyle(Theme.inkSecondary)
+                    } else if let bestReps = exercise.bestReps {
+                        (Text("\(bestReps) ").font(.title.weight(.bold))
+                            + Text("reps").font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.inkSecondary))
+                            .foregroundStyle(Theme.ink)
+                        Text("Best set").font(.caption).foregroundStyle(Theme.inkSecondary)
                     } else {
                         Text("—").font(.title.weight(.bold)).foregroundStyle(Theme.inkSecondary)
+                        Text("No sets yet").font(.caption).foregroundStyle(Theme.inkSecondary)
                     }
-                    Text("Best est. 1RM").font(.caption).foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
-                IntensityRing(ratio: 1, size: 44)
+                if exercise.bestE1RM != nil || exercise.bestReps != nil {
+                    IntensityRing(ratio: 1, size: 44)
+                }
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardStyle()
 
             HStack(spacing: 10) {
-                recordTile(exercise.heaviestWeight.map { "\(Format.weight($0)) lbs" } ?? "—",
-                           "Heaviest weight")
-                recordTile(exercise.bestSet.map { "\(Format.weight($0.weight)) × \($0.reps)" } ?? "—",
-                           "Best set")
+                if exercise.isRepOnly {
+                    recordTile("\(exercise.sessionCount)", "Sessions")
+                    recordTile(exercise.lastDone.map {
+                        $0.formatted(.relative(presentation: .named))
+                    } ?? "—", "Last done")
+                } else {
+                    recordTile(exercise.heaviestWeight.map { "\(Format.weight($0)) lbs" } ?? "—",
+                               "Heaviest weight")
+                    recordTile(exercise.bestSet.map { "\(Format.weight($0.weight)) × \($0.reps)" } ?? "—",
+                               "Best set")
+                }
             }
         }
     }
@@ -91,6 +116,7 @@ struct ExerciseDetailView: View {
             case .e1rm: session.bestE1RM
             case .heaviest: session.heaviest
             case .volume: session.volume > 0 ? session.volume : nil
+            case .reps: session.bestReps.map(Double.init)
             }
             return value.map { ChartPoint(id: session.id, date: session.date, value: $0) }
         }
@@ -105,10 +131,17 @@ struct ExerciseDetailView: View {
 
     private var chartCard: some View {
         VStack(spacing: 10) {
-            Picker("Metric", selection: $metric) {
-                ForEach(Metric.allCases) { Text($0.rawValue).tag($0) }
+            if availableMetrics.count > 1 {
+                Picker("Metric", selection: $metric) {
+                    ForEach(availableMetrics) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            } else {
+                Text("Best reps per session")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .pickerStyle(.segmented)
 
             Chart(chartPoints) { point in
                 AreaMark(x: .value("Date", point.date), y: .value("Value", point.value))
@@ -141,6 +174,7 @@ struct ExerciseDetailView: View {
 private struct SessionRow: View {
     let session: ExerciseHistory.Session
     let bestE1RM: Double?
+    let bestReps: Int?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -161,6 +195,11 @@ private struct SessionRow: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.inkSecondary)
                     .monospacedDigit()
+            } else if let reps = session.bestReps {
+                Text("\(reps) reps")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .monospacedDigit()
             }
         }
         .padding(.horizontal, 14)
@@ -170,7 +209,13 @@ private struct SessionRow: View {
     }
 
     private var ratio: Double? {
-        guard let sessionBest = session.bestE1RM, let bestE1RM, bestE1RM > 0 else { return nil }
-        return sessionBest / bestE1RM
+        if let sessionBest = session.bestE1RM, let bestE1RM, bestE1RM > 0 {
+            return sessionBest / bestE1RM
+        }
+        // Rep-only movements: the ring scores best reps against the record.
+        if let sessionReps = session.bestReps, let bestReps, bestReps > 0 {
+            return Double(sessionReps) / Double(bestReps)
+        }
+        return nil
     }
 }

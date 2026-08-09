@@ -9,6 +9,8 @@ public struct ExerciseHistory: Identifiable, Sendable {
         public let bestE1RM: Double?
         public let volume: Double
         public let heaviest: Double?
+        /// Best working-set rep count — the record axis for bodyweight movements.
+        public let bestReps: Int?
     }
 
     public let id: String  // exercise id
@@ -20,6 +22,11 @@ public struct ExerciseHistory: Identifiable, Sendable {
     public let heaviestWeight: Double?
     /// The set behind bestE1RM.
     public let bestSet: (weight: Double, reps: Int)?
+    public let bestReps: Int?
+
+    /// True when this exercise has no weighted history (pull-ups, push-ups…):
+    /// records and rings run on reps instead of estimated 1RM.
+    public var isRepOnly: Bool { bestE1RM == nil }
 
     public var lastDone: Date? { sessions.last?.date }
     public var sessionCount: Int { sessions.count }
@@ -66,7 +73,8 @@ public enum Stats {
                                             sets: exercise.sets,
                                             bestE1RM: exercise.bestE1RM,
                                             volume: volume,
-                                            heaviest: workingSets.compactMap(\.weight).max()))
+                                            heaviest: workingSets.compactMap(\.weight).max(),
+                                            bestReps: workingSets.compactMap(\.reps).max()))
             }
         }
 
@@ -87,7 +95,8 @@ public enum Stats {
                 sessions: builder.sessions,
                 bestE1RM: allSets.compactMap(\.e1RM).max(),
                 heaviestWeight: allSets.compactMap(\.weight).max(),
-                bestSet: bestSet.map { ($0.0, $0.1) })
+                bestSet: bestSet.map { ($0.0, $0.1) },
+                bestReps: allSets.compactMap(\.reps).max())
         }
     }
 }

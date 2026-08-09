@@ -16,6 +16,7 @@ struct FitnessTrackerApp: App {
                     if let db = model.db {
                         session.configure(db: db)
                         session.resumeIfNeeded(baselines: model.bestE1RMByExerciseId,
+                                               repBaselines: model.bestRepsByExerciseId,
                                                exerciseNames: model.exerciseNames)
                     }
                 }

@@ -32,6 +32,7 @@ final class WorkoutSessionModel {
         var previous: [LoadedSet]
         var sets: [SessionSet]
         var baselineE1RM: Double?
+        var baselineReps: Int?
 
         var completedCount: Int { sets.filter(\.completed).count }
     }
@@ -87,11 +88,13 @@ final class WorkoutSessionModel {
     // MARK: - Lifecycle
 
     func start(template: TemplateSummary?, name: String,
-               baselines: [String: Double], exerciseNames: [String: String]) {
+               baselines: [String: Double], repBaselines: [String: Int],
+               exerciseNames: [String: String]) {
         guard let db else { return }
         do {
             let started = try SessionStore.start(template: template, name: name, into: db)
-            load(started, baselines: baselines, exerciseNames: exerciseNames)
+            load(started, baselines: baselines, repBaselines: repBaselines,
+                 exerciseNames: exerciseNames)
         } catch {
             assertionFailure("start failed: \(error)")
         }
@@ -99,12 +102,14 @@ final class WorkoutSessionModel {
 
     /// Returns true if an unfinished workout was found and loaded.
     @discardableResult
-    func resumeIfNeeded(baselines: [String: Double], exerciseNames: [String: String]) -> Bool {
+    func resumeIfNeeded(baselines: [String: Double], repBaselines: [String: Int],
+                        exerciseNames: [String: String]) -> Bool {
         guard let db, workoutId == nil else { return isActive }
         do {
             guard let id = try SessionStore.activeWorkoutId(in: db),
                   let started = try SessionStore.resume(workoutId: id, from: db) else { return false }
-            load(started, baselines: baselines, exerciseNames: exerciseNames)
+            load(started, baselines: baselines, repBaselines: repBaselines,
+                 exerciseNames: exerciseNames)
             return true
         } catch {
             return false
@@ -112,7 +117,8 @@ final class WorkoutSessionModel {
     }
 
     private func load(_ started: SessionStore.StartedWorkout,
-                      baselines: [String: Double], exerciseNames: [String: String]) {
+                      baselines: [String: Double], repBaselines: [String: Int],
+                      exerciseNames: [String: String]) {
         workoutId = started.workout.id
         name = started.workout.name
         startedAt = started.workout.startedAt
@@ -126,7 +132,8 @@ final class WorkoutSessionModel {
                                 SessionSet(id: $0.id, position: $0.position, isWarmup: $0.isWarmup,
                                            weight: $0.weight, reps: $0.reps, completedAt: $0.completedAt)
                             },
-                            baselineE1RM: baselines[exercise.item.exerciseId])
+                            baselineE1RM: baselines[exercise.item.exerciseId],
+                            baselineReps: repBaselines[exercise.item.exerciseId])
         }
         expandedExerciseId = exercises.first(where: { $0.completedCount < $0.sets.count })?.id
             ?? exercises.first?.id
@@ -218,14 +225,15 @@ final class WorkoutSessionModel {
     }
 
     func addExercise(exerciseId: String, name: String, restSeconds: Int?, baseline: Double?,
-                     previous: [LoadedSet]) {
+                     repBaseline: Int?, previous: [LoadedSet]) {
         guard let db, let workoutId else { return }
         let item = WorkoutItemRecord(workoutId: workoutId, exerciseId: exerciseId,
                                      position: (exercises.count) + 1, restSeconds: restSeconds)
         try? SessionStore.insertItem(item, in: db)
         exercises.append(SessionExercise(id: item.id, exerciseId: exerciseId, name: name,
                                          restSeconds: restSeconds, previous: previous,
-                                         sets: [], baselineE1RM: baseline))
+                                         sets: [], baselineE1RM: baseline,
+                                         baselineReps: repBaseline))
         let setCount = max(previous.count, 1)
         for _ in 0..<setCount { addSet(exerciseId: item.id) }
         expandedExerciseId = item.id

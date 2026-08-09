@@ -30,6 +30,7 @@ final class AppModel {
     private(set) var prCounts: [String: Int] = [:]
     private(set) var exercises: [ExerciseHistory] = []  // sorted by last done, most recent first
     private(set) var bestE1RMByExerciseId: [String: Double] = [:]
+    private(set) var bestRepsByExerciseId: [String: Int] = [:]
     private(set) var exerciseNames: [String: String] = [:]
     private(set) var lastRestByExerciseId: [String: Int] = [:]
     private(set) var templates: [TemplateSummary] = []
@@ -61,6 +62,7 @@ final class AppModel {
         prCounts = result.prCounts
         exercises = result.exercises
         bestE1RMByExerciseId = result.bestE1RM
+        bestRepsByExerciseId = result.bestReps
         exerciseNames = result.exerciseNames
         lastRestByExerciseId = result.lastRest
         templates = result.templates
@@ -130,6 +132,7 @@ final class AppModel {
         let prCounts: [String: Int]
         let exercises: [ExerciseHistory]
         let bestE1RM: [String: Double]
+        let bestReps: [String: Int]
         let exerciseNames: [String: String]
         let lastRest: [String: Int]
         let templates: [TemplateSummary]
@@ -146,6 +149,9 @@ final class AppModel {
             .sorted { ($0.lastDone ?? .distantPast) > ($1.lastDone ?? .distantPast) }
         let bestE1RM = Dictionary(uniqueKeysWithValues: histories.compactMap { history in
             history.bestE1RM.map { (history.id, $0) }
+        })
+        let bestReps = Dictionary(uniqueKeysWithValues: histories.compactMap { history in
+            history.isRepOnly ? history.bestReps.map { (history.id, $0) } : nil
         })
 
         var exerciseNames: [String: String] = [:]
@@ -193,7 +199,7 @@ final class AppModel {
         flushMonth()
 
         return Loaded(sections: sections, prCounts: prCounts,
-                      exercises: histories, bestE1RM: bestE1RM,
+                      exercises: histories, bestE1RM: bestE1RM, bestReps: bestReps,
                       exerciseNames: exerciseNames, lastRest: lastRest,
                       templates: try TemplateStore.loadAll(from: db),
                       workoutsAscending: workouts,
