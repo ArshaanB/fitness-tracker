@@ -133,7 +133,52 @@ struct ExerciseChartCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Chart {
+            metricChart(segments: segments, allPoints: points,
+                        visiblePoints: visiblePoints, xDomain: xDomain,
+                        visibleXDomain: visibleXDomain, yDomain: yDomain)
+        }
+        .padding(14)
+        .cardStyle()
+        .onChange(of: metric) {
+            // Keep the zoom window across metric switches (same date axis).
+            scrubbed = nil
+            crosshair = nil
+        }
+        .onAppear {
+            if exercise.isRepOnly { metric = .reps }
+            // Open focused on the trailing month, anchored to the LAST SESSION
+            // (the domain's padded end can sit months past it on long
+            // histories); pinch out for more, double-tap for everything.
+            let fullSpan = xDomain.upperBound.timeIntervalSince(xDomain.lowerBound)
+            if fullSpan > 60 * 86400, let last = points.last?.date {
+                zoom.setDomain(last.addingTimeInterval(-30 * 86400)...last.addingTimeInterval(2 * 86400),
+                               within: xDomain)
+            }
+        }
+        #if DEBUG
+        .task {
+            // Screenshot hook: render the scrub tooltip without a live touch.
+            // Sleeps must PROPAGATE cancellation (no try?): a cancelled sleep
+            // that falls through to a state write makes every task restart
+            // re-invalidate the view, which is a 100%-CPU loop.
+            if let mode = ProcessInfo.processInfo.environment["SCRUB"] {
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                let points = chartPoints
+                guard !points.isEmpty else { return }
+                scrubbed = mode == "edge" ? points.last : points[points.count * 2 / 3]
+                do { try await Task.sleep(for: .seconds(8)) } catch { return }
+                scrubbed = nil
+            }
+        }
+        #endif
+    }
+
+    private func metricChart(segments: [ChartSegment], allPoints: [ChartPoint],
+                             visiblePoints: [ChartPoint],
+                             xDomain: ClosedRange<Date>,
+                             visibleXDomain: ClosedRange<Date>,
+                             yDomain: ClosedRange<Double>) -> some View {
+        Chart {
                 ForEach(segments) { segment in
                     ForEach(segment.points) { point in
                         AreaMark(x: .value("Date", point.date),
@@ -240,32 +285,6 @@ struct ExerciseChartCard: View {
                 }
             }
             .frame(height: 170)
-        }
-        .padding(14)
-        .cardStyle()
-        .onChange(of: metric) {
-            scrubbed = nil
-            zoom.reset()
-        }
-        .onAppear {
-            if exercise.isRepOnly { metric = .reps }
-        }
-        #if DEBUG
-        .task {
-            // Screenshot hook: render the scrub tooltip without a live touch.
-            // Sleeps must PROPAGATE cancellation (no try?): a cancelled sleep
-            // that falls through to a state write makes every task restart
-            // re-invalidate the view, which is a 100%-CPU loop.
-            if let mode = ProcessInfo.processInfo.environment["SCRUB"] {
-                do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                let points = chartPoints
-                guard !points.isEmpty else { return }
-                scrubbed = mode == "edge" ? points.last : points[points.count * 2 / 3]
-                do { try await Task.sleep(for: .seconds(8)) } catch { return }
-                scrubbed = nil
-            }
-        }
-        #endif
     }
 }
 

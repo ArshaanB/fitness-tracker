@@ -6,6 +6,7 @@ import Testing
 /// machine running the tests: gregorian, UTC, Sunday-start weeks.
 private let utcCalendar: Calendar = {
     var calendar = Calendar(identifier: .gregorian)
+    calendar.firstWeekday = 2  // WeeklyStats normalizes to Monday-start weeks
     calendar.timeZone = TimeZone(identifier: "UTC")!
     return calendar
 }()

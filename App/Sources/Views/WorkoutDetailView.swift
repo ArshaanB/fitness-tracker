@@ -30,7 +30,8 @@ struct WorkoutDetailView: View {
 
                 ForEach(workout.exercises) { exercise in
                     ExerciseCard(exercise: exercise,
-                                 bestE1RM: model.bestE1RMByExerciseId[exercise.exerciseId])
+                                 bestE1RM: model.bestE1RMByExerciseId[exercise.exerciseId],
+                                 bestReps: model.bestRepsByExerciseId[exercise.exerciseId])
                 }
             }
             .padding(.horizontal, 14)
@@ -55,6 +56,7 @@ struct WorkoutDetailView: View {
 private struct ExerciseCard: View {
     let exercise: LoadedExercise
     let bestE1RM: Double?
+    let bestReps: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -84,7 +86,13 @@ private struct ExerciseCard: View {
     }
 
     private func ratio(for set: LoadedSet) -> Double? {
-        guard let e1RM = set.e1RM, let bestE1RM, bestE1RM > 0 else { return nil }
-        return e1RM / bestE1RM
+        if let e1RM = set.e1RM, let bestE1RM, bestE1RM > 0 {
+            return e1RM / bestE1RM
+        }
+        // Bodyweight movements (Chin Up, Pull Up…): score reps vs rep record.
+        if set.weight == nil, let reps = set.reps, let bestReps, bestReps > 0 {
+            return Double(reps) / Double(bestReps)
+        }
+        return nil
     }
 }

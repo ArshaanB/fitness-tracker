@@ -46,4 +46,13 @@ final class ChartZoom {
         anchor = nil
         domain = nil
     }
+
+    /// Programmatic starting window (e.g. "open focused on the last month");
+    /// pinching out from here widens toward the full domain as usual.
+    func setDomain(_ newDomain: ClosedRange<Date>, within full: ClosedRange<Date>) {
+        let lo = max(newDomain.lowerBound, full.lowerBound)
+        let hi = min(newDomain.upperBound, full.upperBound)
+        guard lo < hi else { return }
+        domain = (lo...hi) == full ? nil : lo...hi
+    }
 }

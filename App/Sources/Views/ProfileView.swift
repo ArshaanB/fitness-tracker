@@ -7,6 +7,10 @@ struct ProfileView: View {
     @Environment(AppModel.self) private var model
     @Environment(SyncModel.self) private var sync
 
+    /// Cloud backup is built but not launch-ready; hidden until the sync flow
+    /// gets its polish pass.
+    private let backupEnabled = false
+
     @State private var showAuth = false
     @State private var showImporter = false
     @State private var importMessage: String?
@@ -23,7 +27,9 @@ struct ProfileView: View {
                         tiles
                         FrequencyChartCard(buckets: model.weekBuckets, goal: model.weeklyGoal)
                         bodyWeightCard
-                        accountCard
+                        if backupEnabled {
+                            accountCard
+                        }
                         settingsCard
                     }
                     .padding(.horizontal, 14)
@@ -240,6 +246,15 @@ struct FrequencyChartCard: View {
 
     @State private var scrubbedWeek: WeekBucket?
 
+    /// While scrubbing, the touched bar stays vivid and every other bar fades,
+    /// so it's unmistakable which week the readout describes.
+    private func barOpacity(bucket: WeekBucket, isCurrentWeek: Bool) -> Double {
+        if let scrubbedWeek {
+            return bucket.id == scrubbedWeek.id ? 1.0 : 0.25
+        }
+        return isCurrentWeek ? 0.45 : 0.9
+    }
+
     static func goalColor(_ count: Int, goal: Int) -> Color {
         switch WeeklyStats.goalZone(count: count, goal: goal) {
         case .met: Theme.ringHigh
@@ -265,7 +280,7 @@ struct FrequencyChartCard: View {
                             y: .value("Workouts", max(Double(bucket.workoutCount), 0.12)),
                             width: .ratio(0.55))
                         .foregroundStyle(Self.goalColor(bucket.workoutCount, goal: goal)
-                            .opacity(index == buckets.count - 1 ? 0.45 : 0.9))
+                            .opacity(barOpacity(bucket: bucket, isCurrentWeek: index == buckets.count - 1)))
                         .cornerRadius(4)
                 }
                 RuleMark(y: .value("Goal", goal))
@@ -351,6 +366,19 @@ struct BodyWeightChart: View {
         let visibleWeights = visibleWeights(in: zoom.domain)
         let yDomain = yDomain(of: visibleWeights)
 
+        chart(visibleWeights: visibleWeights, yDomain: yDomain)
+            .onAppear {
+                let full = xDomain
+                if full.upperBound.timeIntervalSince(full.lowerBound) > 60 * 86400,
+                   let last = weights.last?.measuredAt {
+                    zoom.setDomain(last.addingTimeInterval(-30 * 86400)...last.addingTimeInterval(2 * 86400),
+                                   within: full)
+                }
+            }
+    }
+
+    private func chart(visibleWeights: [BodyWeightRecord],
+                       yDomain: ClosedRange<Double>) -> some View {
         Chart {
             ForEach(visibleWeights, id: \.id) { entry in
                 AreaMark(x: .value("Date", entry.measuredAt),

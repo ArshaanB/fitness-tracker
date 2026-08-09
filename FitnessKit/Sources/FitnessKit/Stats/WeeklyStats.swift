@@ -16,13 +16,23 @@ public struct WeekBucket: Identifiable, Sendable, Equatable {
 /// Training-consistency stats: workouts per week, weekly-goal streaks, and
 /// the goal-driven color zones (PRD §5.4). Week boundaries always come from
 /// the calendar, never from 7-day arithmetic.
+///
+/// Weeks start on MONDAY regardless of locale: on a US calendar (Sunday
+/// start), a Sunday workout would open a "new week" and orphan Saturday's
+/// session — training weeks conventionally run Mon–Sun.
 public enum WeeklyStats {
+    private static func mondayFirst(_ calendar: Calendar) -> Calendar {
+        var calendar = calendar
+        calendar.firstWeekday = 2
+        return calendar
+    }
     /// The trailing `weeks` calendar weeks ending with the week containing `now`,
     /// ascending by `weekStart`. Weeks with zero workouts are included.
     public static func weekBuckets(workoutsAscending: [LoadedWorkout],
                                    weeks: Int,
                                    now: Date = Date(),
                                    calendar: Calendar = .current) -> [WeekBucket] {
+        let calendar = mondayFirst(calendar)
         guard weeks > 0, let currentWeekStart = weekStart(of: now, calendar: calendar) else { return [] }
         let counts = workoutCountsByWeekStart(workoutsAscending, calendar: calendar)
         return (0..<weeks).reversed().compactMap { weeksAgo in
@@ -40,6 +50,7 @@ public enum WeeklyStats {
                                      goal: Int,
                                      now: Date = Date(),
                                      calendar: Calendar = .current) -> Int {
+        let calendar = mondayFirst(calendar)
         guard goal > 0, let currentWeekStart = weekStart(of: now, calendar: calendar) else { return 0 }
         let counts = workoutCountsByWeekStart(workoutsAscending, calendar: calendar)
 
@@ -62,6 +73,7 @@ public enum WeeklyStats {
                                       weeks: Int,
                                       now: Date = Date(),
                                       calendar: Calendar = .current) -> Double {
+        let calendar = mondayFirst(calendar)
         guard weeks > 0, let currentWeekStart = weekStart(of: now, calendar: calendar) else { return 0 }
         let counts = workoutCountsByWeekStart(workoutsAscending, calendar: calendar)
         let total = (1...weeks).reduce(0) { sum, weeksAgo in
