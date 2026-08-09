@@ -74,7 +74,7 @@ struct TemplateEditorView: View {
                 } header: {
                     Text("Exercises")
                 } footer: {
-                    Text("Templates set the structure — swipe to remove, drag to reorder. Weights and reps aren't stored here; each workout starts from whatever you did last session.")
+                    Text("Templates set the structure: swipe to remove, drag to reorder. Weights and reps aren't stored here; each workout starts from whatever you did last session.")
                 }
 
                 if existing != nil {
@@ -101,7 +101,7 @@ struct TemplateEditorView: View {
                     dismiss()
                 }
             } message: {
-                Text("Your logged workouts keep their history — only the template goes away.")
+                Text("Your logged workouts keep their history. Only the template goes away.")
             }
             .navigationTitle(existing == nil ? "New Template" : "Edit Template")
             .navigationBarTitleDisplayMode(.inline)

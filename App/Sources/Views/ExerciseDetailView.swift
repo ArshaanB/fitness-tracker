@@ -67,8 +67,9 @@ struct ExerciseDetailView: View {
                             .foregroundStyle(Theme.ink)
                         Text("Best set").font(.caption).foregroundStyle(Theme.inkSecondary)
                     } else {
-                        Text("—").font(.title.weight(.bold)).foregroundStyle(Theme.inkSecondary)
-                        Text("No sets yet").font(.caption).foregroundStyle(Theme.inkSecondary)
+                        Text("No sets yet")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 Spacer()
@@ -85,11 +86,11 @@ struct ExerciseDetailView: View {
                     recordTile("\(exercise.sessionCount)", "Sessions")
                     recordTile(exercise.lastDone.map {
                         $0.formatted(.relative(presentation: .named))
-                    } ?? "—", "Last done")
+                    } ?? "Never", "Last done")
                 } else {
-                    recordTile(exercise.heaviestWeight.map { "\(Format.weight($0)) lbs" } ?? "—",
+                    recordTile(exercise.heaviestWeight.map { "\(Format.weight($0)) lbs" } ?? "None yet",
                                "Heaviest weight")
-                    recordTile(exercise.bestSet.map { "\(Format.weight($0.weight)) × \($0.reps)" } ?? "—",
+                    recordTile(exercise.bestSet.map { "\(Format.weight($0.weight)) × \($0.reps)" } ?? "None yet",
                                "Best set")
                 }
             }
@@ -153,6 +154,16 @@ struct ExerciseDetailView: View {
         }
     }
 
+    private var xDomain: ClosedRange<Date> {
+        let dates = chartPoints.map(\.date)
+        guard let first = dates.min(), let last = dates.max() else {
+            return Date()...Date()
+        }
+        // Breathing room so edge points (and their dots) aren't clipped.
+        let pad = Swift.max(last.timeIntervalSince(first) * 0.04, 7 * 86400)
+        return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
+    }
+
     private var yDomain: ClosedRange<Double> {
         let values = chartPoints.map(\.value)
         guard let min = values.min(), let max = values.max() else { return 0...1 }
@@ -191,6 +202,15 @@ struct ExerciseDetailView: View {
                             .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                     }
                 }
+                // Sparse history (one session, or isolated sessions between
+                // gaps) draws no visible line, so mark the points themselves.
+                if chartPoints.count <= 30 {
+                    ForEach(chartPoints) { point in
+                        PointMark(x: .value("Date", point.date), y: .value("Value", point.value))
+                            .foregroundStyle(Theme.accent)
+                            .symbolSize(30)
+                    }
+                }
                 if let scrubbed {
                     RuleMark(x: .value("Date", scrubbed.date))
                         .foregroundStyle(Theme.inkTertiary.opacity(0.55))
@@ -205,10 +225,11 @@ struct ExerciseDetailView: View {
                         }
                 }
             }
+            .chartXScale(domain: xDomain)
             .chartYScale(domain: yDomain)
             .chartPlotStyle { $0.clipped() }
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 4)) {
+                AxisMarks(values: .automatic(desiredCount: 3)) {
                     AxisValueLabel().font(.caption2).foregroundStyle(Theme.inkTertiary)
                 }
             }

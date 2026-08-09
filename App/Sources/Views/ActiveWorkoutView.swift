@@ -64,13 +64,15 @@ struct ActiveWorkoutView: View {
                                     previous: model.previousWorkingSets(exerciseId: exercise.id))
             }
         }
-        .confirmationDialog("Discard this workout?", isPresented: $showDiscardConfirm,
-                            titleVisibility: .visible) {
-            Button("Discard workout", role: .destructive) {
+        .alert("Discard this workout?", isPresented: $showDiscardConfirm) {
+            Button("Discard", role: .destructive) {
                 session.discard()
                 model.refresh()
                 dismiss()
             }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every set from this session will be deleted. Your past workouts are untouched.")
         }
         .confirmationDialog("This workout has been sitting for a while.",
                             isPresented: $showStalePrompt, titleVisibility: .visible) {
@@ -296,7 +298,7 @@ private struct SetRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            TextField("—", text: weightBinding)
+            TextField("", text: weightBinding)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
                 .font(.body.weight(.semibold))
@@ -306,7 +308,7 @@ private struct SetRow: View {
                             in: RoundedRectangle(cornerRadius: 9))
                 .frame(width: 74)
 
-            TextField("—", text: repsBinding)
+            TextField("", text: repsBinding)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.body.weight(.semibold))
@@ -346,7 +348,7 @@ private struct SetRow: View {
     }
 
     private var previousText: String {
-        guard let previous else { return "—" }
+        guard let previous else { return "" }
         return Format.set(previous).replacingOccurrences(of: "×", with: " × ")
     }
 

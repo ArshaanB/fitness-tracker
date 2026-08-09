@@ -63,6 +63,6 @@ enum Format {
         if let w = set.weight, let r = set.reps { return "\(weight(w))×\(r)" }
         if let r = set.reps { return "BW×\(r)" }
         if let s = set.seconds { return "\(Int(s))s" }
-        return "—"
+        return ""
     }
 }

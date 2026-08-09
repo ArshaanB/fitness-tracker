@@ -24,7 +24,7 @@ struct AuthSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 switch step {
                 case .email:
-                    Text("Enter your email and we'll send a six-digit code — no password needed.")
+                    Text("Enter your email and we'll send a six-digit code. No password needed.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.inkSecondary)
                     TextField("you@example.com", text: $email)

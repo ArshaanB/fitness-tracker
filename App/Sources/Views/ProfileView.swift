@@ -100,7 +100,10 @@ struct ProfileView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Workouts per week").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                Text("last 12 weeks").font(.caption).foregroundStyle(Theme.inkTertiary)
+                Text("goal \(model.weeklyGoal)/wk · last 12 weeks")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .monospacedDigit()
             }
             Chart {
                 ForEach(Array(buckets.enumerated()), id: \.element.id) { index, bucket in
@@ -114,11 +117,6 @@ struct ProfileView: View {
                 RuleMark(y: .value("Goal", model.weeklyGoal))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .foregroundStyle(Theme.inkTertiary)
-                    .annotation(position: .topTrailing, alignment: .trailing) {
-                        Text("goal")
-                            .font(.system(size: 9))
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
                 if let scrubbedWeek {
                     PointMark(x: .value("Week", scrubbedWeek.weekStart, unit: .weekOfYear),
                               y: .value("Workouts", Double(scrubbedWeek.workoutCount)))
@@ -245,7 +243,7 @@ struct ProfileView: View {
                 }
                 .frame(height: 120)
             } else {
-                Text("Log your weight to start the trend line — strength numbers mean more with body weight beside them.")
+                Text("Log your weight to start the trend line. Strength numbers mean more with body weight beside them.")
                     .font(.caption)
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.vertical, 8)
