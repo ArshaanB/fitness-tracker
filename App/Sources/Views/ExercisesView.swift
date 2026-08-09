@@ -59,17 +59,23 @@ struct ExercisesView: View {
                     ExerciseDetailView(exercise: exercise)
                 }
             }
-            .onChange(of: model.isReady) { _, ready in
-                #if DEBUG
-                // Screenshot/dev hook: SIMCTL_CHILD_OPEN_EXERCISE="Bench Press"
-                if ready, let name = ProcessInfo.processInfo.environment["OPEN_EXERCISE"],
-                   let exercise = model.exercises.first(where: {
-                       $0.name.localizedCaseInsensitiveContains(name)
-                   }) {
+            #if DEBUG
+            // Screenshot/dev hook: SIMCTL_CHILD_OPEN_EXERCISE="Bench Press".
+            // Navigates a beat AFTER load settles: pushing during the launch
+            // transaction sends NavigationStack into a ~30s preference storm.
+            .task {
+                guard let name = ProcessInfo.processInfo.environment["OPEN_EXERCISE"] else { return }
+                while !model.isReady {
+                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                }
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                if let exercise = model.exercises.first(where: {
+                    $0.name.localizedCaseInsensitiveContains(name)
+                }) {
                     path.append(exercise.id)
                 }
-                #endif
             }
+            #endif
         }
     }
 }

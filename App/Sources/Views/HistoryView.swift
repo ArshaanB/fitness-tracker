@@ -41,15 +41,20 @@ struct HistoryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .appBackground()
             .navigationTitle("History")
-            .onChange(of: model.isReady) { _, ready in
-                #if DEBUG
-                // Screenshot/dev hook: SIMCTL_CHILD_OPEN_WORKOUT=latest
-                if ready, ProcessInfo.processInfo.environment["OPEN_WORKOUT"] == "latest",
-                   let id = model.monthSections.first?.workouts.first?.id {
+            #if DEBUG
+            // Screenshot/dev hook: SIMCTL_CHILD_OPEN_WORKOUT=latest. Waits for
+            // load + a settle beat; pushing during launch storms NavigationStack.
+            .task {
+                guard ProcessInfo.processInfo.environment["OPEN_WORKOUT"] == "latest" else { return }
+                while !model.isReady {
+                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                }
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                if let id = model.monthSections.first?.workouts.first?.id {
                     path.append(id)
                 }
-                #endif
             }
+            #endif
         }
     }
 }

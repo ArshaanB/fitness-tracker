@@ -41,11 +41,18 @@ final class AppModel {
 
     func bootstrap() async {
         do {
+            let start = Date()
             let db = try await Task.detached(priority: .userInitiated) {
                 try Self.openAndSeed()
             }.value
             self.db = db
+            #if DEBUG
+            print("[boot] openAndSeed took \(Date().timeIntervalSince(start))s")
+            #endif
             try await reload()
+            #if DEBUG
+            print("[boot] total bootstrap took \(Date().timeIntervalSince(start))s")
+            #endif
         } catch {
             state = .failed("\(error)")
         }
