@@ -62,7 +62,7 @@ struct ExerciseChartCard: View {
 
     /// Breaks the line at training gaps longer than ~6 weeks so the chart
     /// doesn't draw a misleading bridge across months you didn't train.
-    private var segments: [ChartSegment] {
+    private func segments(from chartPoints: [ChartPoint]) -> [ChartSegment] {
         let gap: TimeInterval = 45 * 86400
         var result: [[ChartPoint]] = []
         var current: [ChartPoint] = []
@@ -85,7 +85,7 @@ struct ExerciseChartCard: View {
         }
     }
 
-    private var xDomain: ClosedRange<Date> {
+    private func xDomain(of chartPoints: [ChartPoint]) -> ClosedRange<Date> {
         let dates = chartPoints.map(\.date)
         guard let first = dates.min(), let last = dates.max() else {
             return Date()...Date()
@@ -95,14 +95,13 @@ struct ExerciseChartCard: View {
         return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
     }
 
-    private var visibleXDomain: ClosedRange<Date> { zoom.domain ?? xDomain }
-
-    private var visiblePoints: [ChartPoint] {
-        let visible = chartPoints.filter { visibleXDomain.contains($0.date) }
+    private func visiblePoints(_ chartPoints: [ChartPoint],
+                               in domain: ClosedRange<Date>) -> [ChartPoint] {
+        let visible = chartPoints.filter { domain.contains($0.date) }
         return visible.isEmpty ? chartPoints : visible
     }
 
-    private var yDomain: ClosedRange<Double> {
+    private func yDomain(of visiblePoints: [ChartPoint]) -> ClosedRange<Double> {
         let values = visiblePoints.map(\.value)
         guard let min = values.min(), let max = values.max() else { return 0...1 }
         let pad = Swift.max((max - min) * 0.15, 5)
@@ -110,6 +109,17 @@ struct ExerciseChartCard: View {
     }
 
     var body: some View {
+        // Derived data computed ONCE per body evaluation. Referencing the
+        // computed properties inside the mark ForEach re-derived chartPoints
+        // per mark — O(n²) work per render, at up to 120 renders/sec while
+        // scrubbing.
+        let points = chartPoints
+        let segments = segments(from: points)
+        let xDomain = xDomain(of: points)
+        let visibleXDomain = zoom.domain ?? xDomain
+        let visiblePoints = visiblePoints(points, in: visibleXDomain)
+        let yDomain = yDomain(of: visiblePoints)
+
         VStack(spacing: 10) {
             if availableMetrics.count > 1 {
                 Picker("Metric", selection: $metric) {

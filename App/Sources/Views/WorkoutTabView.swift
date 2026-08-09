@@ -30,7 +30,7 @@ struct WorkoutTabView: View {
                     ForEach(model.templates) { template in
                         TemplateCard(template: template,
                                      lastDone: lastDone(template),
-                                     canStart: !session.isActive) {
+                                     canStart: !session.isActive && model.isReady) {
                             start(template)
                         } onOpen: {
                             editorTarget = .edit(template)
@@ -52,6 +52,7 @@ struct WorkoutTabView: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.accent)
                             .padding(.top, 6)
+                            .disabled(!model.isReady)
                     }
                 }
                 .padding(.horizontal, 14)
@@ -109,6 +110,9 @@ struct WorkoutTabView: View {
     #endif
 
     private func start(_ template: TemplateSummary?) {
+        // Starting before the database is ready would create a phantom
+        // session that silently loses everything logged into it.
+        guard model.isReady else { return }
         session.start(template: template,
                       name: template?.name ?? "Workout",
                       baselines: model.bestE1RMByExerciseId,

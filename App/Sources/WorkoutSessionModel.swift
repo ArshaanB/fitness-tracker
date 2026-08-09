@@ -28,6 +28,7 @@ final class WorkoutSessionModel {
         let id: String  // workoutItem id
         let exerciseId: String
         let name: String
+        var position: Int
         var restSeconds: Int?
         var previous: [LoadedSet]
         var sets: [SessionSet]
@@ -80,6 +81,7 @@ final class WorkoutSessionModel {
     }
 
     private var db: DatabaseQueue?
+    private var pendingSaves: [String: Task<Void, Never>] = [:]
 
     func configure(db: DatabaseQueue) {
         self.db = db
@@ -126,6 +128,7 @@ final class WorkoutSessionModel {
             SessionExercise(id: exercise.item.id,
                             exerciseId: exercise.item.exerciseId,
                             name: exerciseNames[exercise.item.exerciseId] ?? "Exercise",
+                            position: exercise.item.position,
                             restSeconds: exercise.item.restSeconds,
                             previous: exercise.previous,
                             sets: exercise.sets.map {
@@ -137,6 +140,7 @@ final class WorkoutSessionModel {
         }
         expandedExerciseId = exercises.first(where: { $0.completedCount < $0.sets.count })?.id
             ?? exercises.first?.id
+        restoreRestTimer()
     }
 
     func finishSummary() -> (duration: Int, volume: Double, sets: Int, prs: [FinishPR]) {
@@ -155,6 +159,7 @@ final class WorkoutSessionModel {
 
     func finish() {
         guard let db, let workoutId else { return }
+        flushPendingSaves()
         try? SessionStore.finish(workoutId: workoutId, in: db)
         clearRest()
         reset()
@@ -162,6 +167,8 @@ final class WorkoutSessionModel {
 
     func discard() {
         guard let db, let workoutId else { return }
+        pendingSaves.values.forEach { $0.cancel() }
+        pendingSaves = [:]
         try? SessionStore.discard(workoutId: workoutId, in: db)
         clearRest()
         reset()
@@ -185,12 +192,42 @@ final class WorkoutSessionModel {
             in: db)
     }
 
+    /// Weight/reps keystrokes persist debounced (writing SQLite per keystroke
+    /// on the main actor is wasteful); everything structural stays immediate.
+    private func schedulePersist(setId: String, itemId: String) {
+        pendingSaves[setId]?.cancel()
+        pendingSaves[setId] = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+            guard let self else { return }
+            self.pendingSaves[setId] = nil
+            if let exercise = self.exercises.first(where: { $0.id == itemId }),
+               let set = exercise.sets.first(where: { $0.id == setId }) {
+                self.persist(set, itemId: itemId)
+            }
+        }
+    }
+
+    /// Persists any debounced edits immediately (finish, app backgrounding).
+    func flushPendingSaves() {
+        let pending = pendingSaves
+        pendingSaves = [:]
+        for (setId, task) in pending {
+            task.cancel()
+            for exercise in exercises {
+                if let set = exercise.sets.first(where: { $0.id == setId }) {
+                    persist(set, itemId: exercise.id)
+                    break
+                }
+            }
+        }
+    }
+
     func updateSet(exerciseId: String, setId: String, weight: Double?, reps: Int?) {
         guard let e = exercises.firstIndex(where: { $0.id == exerciseId }),
               let s = exercises[e].sets.firstIndex(where: { $0.id == setId }) else { return }
         exercises[e].sets[s].weight = weight
         exercises[e].sets[s].reps = reps
-        persist(exercises[e].sets[s], itemId: exerciseId)
+        schedulePersist(setId: setId, itemId: exerciseId)
     }
 
     func toggleComplete(exerciseId: String, setId: String) {
@@ -198,6 +235,8 @@ final class WorkoutSessionModel {
               let s = exercises[e].sets.firstIndex(where: { $0.id == setId }) else { return }
         let wasCompleted = exercises[e].sets[s].completed
         exercises[e].sets[s].completedAt = wasCompleted ? nil : Date()
+        pendingSaves[setId]?.cancel()
+        pendingSaves[setId] = nil
         persist(exercises[e].sets[s], itemId: exerciseId)
         if !wasCompleted {
             startRest(for: exercises[e])
@@ -220,17 +259,26 @@ final class WorkoutSessionModel {
     func deleteSet(exerciseId: String, setId: String) {
         guard let db,
               let e = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
+        pendingSaves[setId]?.cancel()
+        pendingSaves[setId] = nil
         exercises[e].sets.removeAll { $0.id == setId }
         try? SessionStore.deleteSet(id: setId, in: db)
+        // Renumber so the visible set numbers stay 1…n after a deletion.
+        for i in exercises[e].sets.indices where exercises[e].sets[i].position != i + 1 {
+            exercises[e].sets[i].position = i + 1
+            persist(exercises[e].sets[i], itemId: exerciseId)
+        }
     }
 
     func addExercise(exerciseId: String, name: String, restSeconds: Int?, baseline: Double?,
                      repBaseline: Int?, previous: [LoadedSet]) {
         guard let db, let workoutId else { return }
+        let position = (exercises.map(\.position).max() ?? 0) + 1
         let item = WorkoutItemRecord(workoutId: workoutId, exerciseId: exerciseId,
-                                     position: (exercises.count) + 1, restSeconds: restSeconds)
+                                     position: position, restSeconds: restSeconds)
         try? SessionStore.insertItem(item, in: db)
         exercises.append(SessionExercise(id: item.id, exerciseId: exerciseId, name: name,
+                                         position: position,
                                          restSeconds: restSeconds, previous: previous,
                                          sets: [], baselineE1RM: baseline,
                                          baselineReps: repBaseline))
@@ -252,7 +300,31 @@ final class WorkoutSessionModel {
         rest = RestState(exerciseName: exercise.name,
                          endDate: Date().addingTimeInterval(TimeInterval(seconds)),
                          totalSeconds: seconds)
+        persistRestTimer()
         scheduleRestNotification()
+    }
+
+    /// The rest timer survives app termination like the rest of the session.
+    private func persistRestTimer() {
+        let defaults = UserDefaults.standard
+        if let rest {
+            defaults.set(rest.endDate, forKey: "restEndDate")
+            defaults.set(rest.totalSeconds, forKey: "restTotalSeconds")
+        } else {
+            defaults.removeObject(forKey: "restEndDate")
+            defaults.removeObject(forKey: "restTotalSeconds")
+        }
+    }
+
+    private func restoreRestTimer() {
+        let defaults = UserDefaults.standard
+        guard let end = defaults.object(forKey: "restEndDate") as? Date, end > Date() else {
+            persistRestTimer()
+            return
+        }
+        rest = RestState(exerciseName: "",
+                         endDate: end,
+                         totalSeconds: max(defaults.integer(forKey: "restTotalSeconds"), 1))
     }
 
     func adjustRest(by delta: Int) {
@@ -263,12 +335,14 @@ final class WorkoutSessionModel {
             clearRest()
         } else {
             self.rest = rest
+            persistRestTimer()
             scheduleRestNotification()
         }
     }
 
     func clearRest() {
         rest = nil
+        persistRestTimer()
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["rest"])
     }
 

@@ -13,6 +13,20 @@ struct HistoryView: View {
                     ProgressView("Importing history…")
                 case .failed(let message):
                     Text(message).foregroundStyle(Theme.inkSecondary).padding()
+                case .ready where model.monthSections.isEmpty:
+                    VStack(spacing: 8) {
+                        Image(systemName: "clock")
+                            .font(.title)
+                            .foregroundStyle(Theme.inkTertiary)
+                        Text("No workouts yet")
+                            .font(.headline)
+                            .foregroundStyle(Theme.ink)
+                        Text("Start a workout from the Workout tab, or import your Strong history from Profile.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.inkSecondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 280)
+                    }
                 case .ready:
                     ScrollView {
                         LazyVStack(spacing: 12) {
@@ -33,9 +47,12 @@ struct HistoryView: View {
                 }
             }
             .navigationDestination(for: String.self) { workoutId in
-                if let workout = model.monthSections
-                    .flatMap(\.workouts).first(where: { $0.id == workoutId }) {
+                if let workout = model.workoutsById[workoutId] {
                     WorkoutDetailView(workout: workout)
+                } else {
+                    Text("This workout is no longer available.")
+                        .foregroundStyle(Theme.inkSecondary)
+                        .appBackground()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

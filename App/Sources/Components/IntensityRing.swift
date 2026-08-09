@@ -27,6 +27,19 @@ struct IntensityRing: View {
             }
         }
         .frame(width: size, height: size)
+        .accessibilityLabel(accessibilityDescription)
+    }
+
+    /// Rings encode intensity purely in color; VoiceOver gets it in words.
+    private var accessibilityDescription: String {
+        guard let ratio else { return "No intensity data" }
+        let percent = Int((ratio * 100).rounded())
+        switch ratio {
+        case ..<0.7: return "Intensity \(percent) percent of record, far from max"
+        case ..<0.9: return "Intensity \(percent) percent of record, working weight"
+        case ..<1.0: return "Intensity \(percent) percent of record, near your record"
+        default: return "New record intensity, \(percent) percent of previous best"
+        }
     }
 
     private func color(for ratio: Double) -> Color {

@@ -41,6 +41,9 @@ struct ActiveWorkoutView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    // Stay at the screen bottom; riding the keyboard covers
+                    // the very set row being edited.
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
         .animation(.spring(duration: 0.35), value: session.rest?.endDate)
@@ -83,16 +86,27 @@ struct ActiveWorkoutView: View {
                 model.refresh()
                 dismiss()
             }
-            Button("Keep going", role: .cancel) {}
+            Button("Keep going", role: .cancel) {
+                if let id = session.workoutId {
+                    UserDefaults.standard.set(true, forKey: "staleDismissed-\(id)")
+                }
+            }
         }
         .onAppear {
-            showStalePrompt = session.isStale
+            // Ask once per session about staleness; "Keep going" shouldn't
+            // re-prompt on every reopen.
+            let dismissKey = "staleDismissed-\(session.workoutId ?? "")"
+            if session.isStale && !UserDefaults.standard.bool(forKey: dismissKey) {
+                showStalePrompt = true
+            }
             #if DEBUG
             if ProcessInfo.processInfo.environment["SHOW_FINISH"] != nil {
                 showFinish = true
             }
             #endif
         }
+        // A dense in-gym grid: cap text scaling rather than break the layout.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 
     private var header: some View {
@@ -277,7 +291,12 @@ private struct SetRow: View {
     let set: WorkoutSessionModel.SessionSet
     let previous: LoadedSet?
 
-    @FocusState private var focused: Bool
+    // Local text state: a get/set binding that reformats the model value on
+    // every keystroke eats the decimal separator ("185." reformats to "185"),
+    // making decimal weights untypable. The text is the source of truth while
+    // editing; the model receives parsed values.
+    @State private var weightText = ""
+    @State private var repsText = ""
 
     var body: some View {
         HStack(spacing: 6) {
@@ -294,7 +313,7 @@ private struct SetRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            TextField("", text: weightBinding)
+            TextField("", text: $weightText)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
                 .font(.body.weight(.semibold))
@@ -303,8 +322,13 @@ private struct SetRow: View {
                 .background(set.completed ? .clear : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
                             in: RoundedRectangle(cornerRadius: 9))
                 .frame(width: 74)
+                .accessibilityLabel("Weight in pounds")
+                .onChange(of: weightText) { _, text in
+                    session.updateSet(exerciseId: exercise.id, setId: set.id,
+                                      weight: Self.parseWeight(text), reps: set.reps)
+                }
 
-            TextField("", text: repsBinding)
+            TextField("", text: $repsText)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.body.weight(.semibold))
@@ -313,6 +337,11 @@ private struct SetRow: View {
                 .background(set.completed ? .clear : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
                             in: RoundedRectangle(cornerRadius: 9))
                 .frame(width: 56)
+                .accessibilityLabel("Repetitions")
+                .onChange(of: repsText) { _, text in
+                    session.updateSet(exerciseId: exercise.id, setId: set.id,
+                                      weight: set.weight, reps: Int(text))
+                }
 
             IntensityRing(ratio: ratio, size: 24)
                 .frame(width: 28)
@@ -331,6 +360,8 @@ private struct SetRow: View {
                                       lineWidth: 1.5))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(set.completed ? "Mark set \(set.position) incomplete"
+                                              : "Complete set \(set.position)")
         }
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
@@ -341,6 +372,15 @@ private struct SetRow: View {
                 session.deleteSet(exerciseId: exercise.id, setId: set.id)
             }
         }
+        .onAppear {
+            weightText = set.weight.map { Format.weight($0) } ?? ""
+            repsText = set.reps.map(String.init) ?? ""
+        }
+    }
+
+    /// Accepts both "." and "," as decimal separators.
+    static func parseWeight(_ text: String) -> Double? {
+        Double(text.replacingOccurrences(of: ",", with: "."))
     }
 
     private var previousText: String {
@@ -358,24 +398,6 @@ private struct SetRow: View {
             return Double(reps) / Double(baseline)
         }
         return nil
-    }
-
-    private var weightBinding: Binding<String> {
-        Binding {
-            set.weight.map { Format.weight($0) } ?? ""
-        } set: { text in
-            session.updateSet(exerciseId: exercise.id, setId: set.id,
-                              weight: Double(text), reps: set.reps)
-        }
-    }
-
-    private var repsBinding: Binding<String> {
-        Binding {
-            set.reps.map(String.init) ?? ""
-        } set: { text in
-            session.updateSet(exerciseId: exercise.id, setId: set.id,
-                              weight: set.weight, reps: Int(text))
-        }
     }
 }
 
@@ -460,81 +482,93 @@ private struct RestAdjustStyle: ButtonStyle {
 private struct FinishSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(WorkoutSessionModel.self) private var session
+    @Environment(SyncModel.self) private var sync
     @Environment(\.dismiss) private var dismiss
     let dismissWorkout: () -> Void
 
     var body: some View {
         let summary = session.finishSummary()
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Workout complete")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(Theme.ink)
-                Text("\(session.name) · \(Date().formatted(.dateTime.weekday(.wide).month().day()))")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.inkSecondary)
-            }
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Workout complete")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(Theme.ink)
+                        Text("\(session.name) · \(Date().formatted(.dateTime.weekday(.wide).month().day()))")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
 
-            HStack(spacing: 10) {
-                stat(Format.duration(summary.duration), "Duration")
-                stat("\(Format.volume(summary.volume)) lbs", "Volume")
-                stat("\(summary.sets)", "Sets")
-            }
+                    HStack(spacing: 10) {
+                        stat(Format.duration(summary.duration), "Duration")
+                        stat("\(Format.volume(summary.volume)) lbs", "Volume")
+                        stat("\(summary.sets)", "Sets")
+                    }
 
-            if !summary.prs.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("NEW RECORDS")
-                        .font(.system(size: 11, weight: .semibold))
-                        .kerning(0.8)
-                        .foregroundStyle(Theme.inkTertiary)
-                    ForEach(summary.prs) { pr in
-                        HStack(spacing: 12) {
-                            IntensityRing(ratio: 1, size: 26)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(pr.name)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(Theme.ink)
-                                Text("est. 1RM \(Int(pr.e1RM)) lbs")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.inkSecondary)
-                                    .monospacedDigit()
-                            }
-                            Spacer()
-                            if let previous = pr.previousBest {
-                                Text("+\(Int(pr.e1RM - previous)) lbs")
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(Theme.ringHigh)
-                                    .monospacedDigit()
-                            } else {
-                                Text("first record")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(Theme.inkTertiary)
+                    if summary.sets == 0 {
+                        Text("No sets were completed, so this workout will be discarded rather than saved to history.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+
+                    if !summary.prs.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("NEW RECORDS")
+                                .font(.system(size: 11, weight: .semibold))
+                                .kerning(0.8)
+                                .foregroundStyle(Theme.inkTertiary)
+                            ForEach(summary.prs) { pr in
+                                HStack(spacing: 12) {
+                                    IntensityRing(ratio: 1, size: 26)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(pr.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(Theme.ink)
+                                        Text("est. 1RM \(Int(pr.e1RM)) lbs")
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.inkSecondary)
+                                            .monospacedDigit()
+                                    }
+                                    Spacer()
+                                    if let previous = pr.previousBest {
+                                        Text("+\(Int(pr.e1RM - previous)) lbs")
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(Theme.ringHigh)
+                                            .monospacedDigit()
+                                    } else {
+                                        Text("first record")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(Theme.inkTertiary)
+                                    }
+                                }
+                                .padding(12)
+                                .background(.white, in: RoundedRectangle(cornerRadius: 14))
                             }
                         }
-                        .padding(12)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 14))
                     }
                 }
+                .padding(22)
             }
-
-            Spacer()
 
             Button {
                 session.finish()
                 model.refresh()
+                sync.pushSoon()
                 dismiss()
                 dismissWorkout()
             } label: {
-                Text("Finish Workout")
+                Text(summary.sets == 0 ? "Discard Workout" : "Finish Workout")
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
-                    .background(Theme.accent, in: Capsule())
+                    .background(summary.sets == 0 ? Theme.ringLow : Theme.accent, in: Capsule())
             }
             .buttonStyle(.plain)
+            .padding(.horizontal, 22)
+            .padding(.bottom, 22)
         }
-        .padding(22)
         .presentationDetents([.medium, .large])
         .presentationBackground(Color(red: 245 / 255, green: 247 / 255, blue: 251 / 255))
     }

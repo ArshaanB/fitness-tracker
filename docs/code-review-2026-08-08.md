@@ -127,3 +127,16 @@ The stale prompt's 'Finish it' (ActiveWorkoutView.swift:80) runs the normal fini
 ## Refuted during verification
 
 - No way to dismiss the numeric keyboard in the active workout — The mechanical observations are accurate — the TextFields at ActiveWorkoutView.swift:297/307 use .decimalPad/.numberPad, there is no keyboard toolbar or .scrollDismissesKeyboard modifier anywhere in A
+---
+
+## Resolutions (2026-08-09)
+
+All 11 confirmed findings fixed; 25 of 29 medium/low fixed; 4 accepted with rationale.
+
+**Criticals** — resolved together via account-identity tracking in SyncModel: the local database records which account it belongs to; signing in as a different account wipes local data and restores that account's cloud state; unowned local data meeting existing cloud data presents an explicit upload-vs-replace choice in AuthSheet; the bundled CSV seed is now DEBUG + `SEED_CSV=1` opt-in only, so real fresh installs are empty and the restore path is reachable.
+
+**Highs** — decimal typing (local text state, "," accepted); restore paginates past the 1000-row cap and only ever runs into an empty store; chart derived-data computed once per render (both charts); rest pill no longer rides the keyboard; VoiceOver labels on rings, set fields, and completion buttons; finishing with zero completed sets deletes the workout (with explicit sheet messaging); stale finishes stamp the last completed set's time, not "now". Import timezone was resolved differently than suggested: local-zone parsing is kept so displayed times match memory, with a UTC fallback for DST-gap wall times (fixes the silent drops); re-importing after a timezone move is a documented accepted limitation since import is a one-time migration.
+
+**Medium/low fixed** — deletes push before upserts; sign-out cancels in-flight pushes and can't be overwritten by them; `configure` uses the cached session (no `try?`-swallowed refresh); frequency scrub snaps to the containing week; phantom pre-bootstrap workouts blocked; set positions renumber on delete and item positions no longer collide; keystroke persistence debounced (500ms) with flush on finish/backgrounding; rest timer survives app kill; weekly stats cached in AppModel; workout lookup is a dictionary with a graceful missing-id fallback; failed loads show an error on every tab; empty states on History/Exercises; FinishSheet scrolls; Dynamic Type capped at xxLarge in the logging grid; body-weight entries deletable from the log sheet; comma decimals accepted everywhere; the import row now states it accepts only Strong's "Export workouts" CSV.
+
+**Accepted (documented, not fixed)** — history list stays LazyVStack (List restyle not worth it at current scale); server FKs are not user-scoped (RLS blocks reads/writes; exploiting requires guessing another user's row UUIDs); the stale prompt only fires on reopen, not for a screen left open 6+ hours; a ≤500ms edit-loss window exists if the app is killed mid-debounce.

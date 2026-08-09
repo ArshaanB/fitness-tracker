@@ -118,6 +118,19 @@ public enum AppDatabase {
         "workoutItem", "workoutSet", "bodyWeight", "settings",
     ]
 
+    /// Deletes every row from every synced table, then empties the outbox —
+    /// all in one transaction. The table deletes re-fire the outbox triggers,
+    /// which is why the outbox is cleared LAST: a wipe (e.g. switching
+    /// accounts) must leave nothing queued to push.
+    public static func wipeAllData(in dbQueue: DatabaseQueue) throws {
+        try dbQueue.write { db in
+            for table in syncedTables.reversed() {
+                try db.execute(sql: "DELETE FROM \(table)")
+            }
+            try db.execute(sql: "DELETE FROM outbox")
+        }
+    }
+
     public static func open(at path: String) throws -> DatabaseQueue {
         let dbQueue = try DatabaseQueue(path: path)
         try makeMigrator().migrate(dbQueue)

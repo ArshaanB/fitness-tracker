@@ -11,10 +11,24 @@ public struct LoadedSet: Identifiable, Sendable {
     public let weight: Double?
     public let reps: Int?
     public let seconds: Double?
+    /// Stored, not computed: derived once from weight/reps at construction.
+    /// e1RM is read tens of thousands of times per history load, so a
+    /// computed property would redo the same math ~60k times per reload.
+    public let e1RM: Double?
 
-    public var e1RM: Double? {
-        guard let weight, let reps else { return nil }
-        return Strength.estimatedOneRepMax(weight: weight, reps: reps)
+    public init(id: String, position: Int, isWarmup: Bool,
+                weight: Double?, reps: Int?, seconds: Double?) {
+        self.id = id
+        self.position = position
+        self.isWarmup = isWarmup
+        self.weight = weight
+        self.reps = reps
+        self.seconds = seconds
+        if let weight, let reps {
+            self.e1RM = Strength.estimatedOneRepMax(weight: weight, reps: reps)
+        } else {
+            self.e1RM = nil
+        }
     }
 }
 

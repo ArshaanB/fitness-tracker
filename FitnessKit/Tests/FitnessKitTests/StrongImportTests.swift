@@ -106,6 +106,22 @@ Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,
         #expect(plank.sets[0].seconds == 60)
     }
 
+    @Test func parsesCommaDecimalWeightsAndRejectsNonFinite() throws {
+        let csv = """
+        Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds
+        2026-01-05 10:00:00,"A",45m,"Bench Press (Barbell)",1,"82,5",8.0,0,0.0
+        2026-01-05 10:00:00,"A",45m,"Bench Press (Barbell)",2,inf,8.0,0,0.0
+        2026-01-05 10:00:00,"A",45m,"Bench Press (Barbell)",3,nan,8.0,0,0.0
+        """
+        let workouts = try StrongImport.parse(csv: csv)
+        #expect(workouts.count == 1)
+        let sets = workouts[0].exercises[0].sets
+        #expect(sets.count == 3)
+        #expect(sets[0].weight == 82.5)   // comma decimal separator accepted
+        #expect(sets[1].weight == nil)    // infinity rejected
+        #expect(sets[2].weight == nil)    // NaN rejected
+    }
+
     @Test func rejectsUnknownFormat() {
         #expect(throws: StrongImportError.self) {
             try StrongImport.parse(csv: "Foo,Bar\n1,2\n")

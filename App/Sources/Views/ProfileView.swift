@@ -12,18 +12,6 @@ struct ProfileView: View {
     @State private var importMessage: String?
     @State private var showWeightSheet = false
 
-    private var buckets: [WeekBucket] {
-        WeeklyStats.weekBuckets(workoutsAscending: model.workoutsAscending, weeks: 12)
-    }
-
-    private var streak: Int {
-        WeeklyStats.currentStreak(workoutsAscending: model.workoutsAscending, goal: model.weeklyGoal)
-    }
-
-    private var average: Double {
-        WeeklyStats.averagePerWeek(workoutsAscending: model.workoutsAscending, weeks: 12)
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -33,7 +21,7 @@ struct ProfileView: View {
                 } else {
                     LazyVStack(spacing: 12) {
                         tiles
-                        FrequencyChartCard(buckets: buckets, goal: model.weeklyGoal)
+                        FrequencyChartCard(buckets: model.weekBuckets, goal: model.weeklyGoal)
                         bodyWeightCard
                         accountCard
                         settingsCard
@@ -70,11 +58,11 @@ struct ProfileView: View {
 
     private var tiles: some View {
         HStack(spacing: 10) {
-            let thisWeek = buckets.last?.workoutCount ?? 0
+            let thisWeek = model.weekBuckets.last?.workoutCount ?? 0
             tile("\(thisWeek)", "This week",
                  color: FrequencyChartCard.goalColor(thisWeek, goal: model.weeklyGoal))
-            tile("\(streak) wks", "Streak at goal", color: Theme.ink)
-            tile(String(format: "%.1f", average), "Avg / week", color: Theme.ink)
+            tile("\(model.currentStreak) wks", "Streak at goal", color: Theme.ink)
+            tile(String(format: "%.1f", model.weeklyAverage), "Avg / week", color: Theme.ink)
         }
     }
 
@@ -216,12 +204,17 @@ struct ProfileView: View {
             Button {
                 showImporter = true
             } label: {
-                HStack {
-                    Text("Import from Strong").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Import from Strong").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
+                        Text("Only the CSV from Strong's \"Export workouts\" works here. Exports from other apps use different formats.")
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
                     Spacer()
-                    Text("CSV").font(.subheadline).foregroundStyle(Theme.inkTertiary)
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold)).foregroundStyle(Theme.inkTertiary)
+                        .padding(.top, 4)
                 }
                 .padding(14)
                 .contentShape(Rectangle())
@@ -309,9 +302,10 @@ struct FrequencyChartCard: View {
                                     guard let plotFrame = proxy.plotFrame else { return }
                                     let x = drag.location.x - geo[plotFrame].origin.x
                                     guard let date: Date = proxy.value(atX: x) else { return }
-                                    scrubbedWeek = buckets.min {
-                                        abs($0.weekStart.timeIntervalSince(date)) < abs($1.weekStart.timeIntervalSince(date))
-                                    }
+                                    // Snap to the bucket CONTAINING the touch
+                                    // date; nearest-weekStart picks the wrong
+                                    // week for the latter half of each bar.
+                                    scrubbedWeek = buckets.last { $0.weekStart <= date } ?? buckets.first
                                 }
                                 .onEnded { _ in scrubbedWeek = nil })
                 }
@@ -339,20 +333,24 @@ struct BodyWeightChart: View {
         return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
     }
 
-    private var visibleWeights: [BodyWeightRecord] {
-        guard let domain = zoom.domain else { return weights }
+    private func visibleWeights(in domain: ClosedRange<Date>?) -> [BodyWeightRecord] {
+        guard let domain else { return weights }
         let visible = weights.filter { domain.contains($0.measuredAt) }
         return visible.isEmpty ? weights : visible
     }
 
-    private var yDomain: ClosedRange<Double> {
-        let values = visibleWeights.map(\.weight)
+    private func yDomain(of visible: [BodyWeightRecord]) -> ClosedRange<Double> {
+        let values = visible.map(\.weight)
         guard let min = values.min(), let max = values.max() else { return 0...1 }
         let pad = Swift.max((max - min) * 0.2, 2)
         return (min - pad)...(max + pad)
     }
 
     var body: some View {
+        // Derived once per render (same O(n²)-avoidance as the exercise chart).
+        let visibleWeights = visibleWeights(in: zoom.domain)
+        let yDomain = yDomain(of: visibleWeights)
+
         Chart {
             ForEach(visibleWeights, id: \.id) { entry in
                 AreaMark(x: .value("Date", entry.measuredAt),
@@ -454,9 +452,13 @@ private struct LogWeightSheet: View {
     @State private var text = ""
     @FocusState private var focused: Bool
 
+    private var parsed: Double? {
+        Double(text.replacingOccurrences(of: ",", with: "."))
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 18) {
+            VStack(spacing: 14) {
                 TextField(lastWeight.map { Format.weight($0) } ?? "180", text: $text)
                     .keyboardType(.decimalPad)
                     .font(.system(size: 44, weight: .bold))
@@ -464,6 +466,15 @@ private struct LogWeightSheet: View {
                     .monospacedDigit()
                     .focused($focused)
                 Text("lbs").font(.subheadline).foregroundStyle(Theme.inkSecondary)
+                if let last = model.bodyWeights.last {
+                    Button(role: .destructive) {
+                        model.deleteBodyWeight(id: last.id)
+                        dismiss()
+                    } label: {
+                        Text("Delete last entry (\(Format.weight(last.weight)) lbs, \(last.measuredAt.formatted(.dateTime.month().day())))")
+                            .font(.footnote.weight(.medium))
+                    }
+                }
                 Spacer()
             }
             .padding(.top, 40)
@@ -476,16 +487,16 @@ private struct LogWeightSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let weight = Double(text), weight > 0 {
+                        if let weight = parsed, weight > 0 {
                             model.logBodyWeight(weight)
                         }
                         dismiss()
                     }
-                    .disabled(Double(text) == nil)
+                    .disabled(parsed == nil)
                 }
             }
             .onAppear { focused = true }
         }
-        .presentationDetents([.height(240)])
+        .presentationDetents([.height(280)])
     }
 }

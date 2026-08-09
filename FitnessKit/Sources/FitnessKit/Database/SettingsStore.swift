@@ -49,4 +49,8 @@ public enum BodyWeightStore {
             try BodyWeightRecord(measuredAt: date, weight: weight).insert(db)
         }
     }
+
+    public static func delete(id: String, in dbQueue: DatabaseQueue) throws {
+        _ = try dbQueue.write { try BodyWeightRecord.deleteOne($0, key: id) }
+    }
 }

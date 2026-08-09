@@ -31,18 +31,28 @@ public enum SessionStore {
     /// The working (non-warm-up) sets of the most recent finished workout that
     /// included this exercise — the numbers shown in the "previous" column.
     public static func previousWorkingSets(exerciseId: String, in db: Database) throws -> [LoadedSet] {
+        // One specific workout, then one specific item within it: never merge
+        // sets across tied-timestamp workouts or across duplicate items for
+        // the same exercise in one workout.
+        guard let workoutId = try String.fetchOne(db, sql: """
+            SELECT w.id FROM workout w
+            WHERE w.finishedAt IS NOT NULL AND EXISTS (
+              SELECT 1 FROM workoutItem wi
+              WHERE wi.workoutId = w.id AND wi.exerciseId = ?)
+            ORDER BY w.startedAt DESC, w.id DESC
+            LIMIT 1
+            """, arguments: [exerciseId]) else { return [] }
+        guard let itemId = try String.fetchOne(db, sql: """
+            SELECT id FROM workoutItem
+            WHERE workoutId = ? AND exerciseId = ?
+            ORDER BY position DESC
+            LIMIT 1
+            """, arguments: [workoutId, exerciseId]) else { return [] }
         let rows = try Row.fetchAll(db, sql: """
-            SELECT ws.* FROM workoutSet ws
-            JOIN workoutItem wi ON wi.id = ws.workoutItemId
-            JOIN workout w ON w.id = wi.workoutId
-            WHERE wi.exerciseId = ? AND w.finishedAt IS NOT NULL
-              AND w.startedAt = (
-                SELECT MAX(w2.startedAt) FROM workout w2
-                JOIN workoutItem wi2 ON wi2.workoutId = w2.id
-                WHERE wi2.exerciseId = ? AND w2.finishedAt IS NOT NULL)
-              AND ws.isWarmup = 0
-            ORDER BY ws.position
-            """, arguments: [exerciseId, exerciseId])
+            SELECT * FROM workoutSet
+            WHERE workoutItemId = ? AND isWarmup = 0
+            ORDER BY position
+            """, arguments: [itemId])
         return rows.map { row in
             LoadedSet(id: row["id"], position: row["position"], isWarmup: false,
                       weight: row["weight"], reps: row["reps"], seconds: row["seconds"])
@@ -56,6 +66,11 @@ public enum SessionStore {
                              at startedAt: Date = Date(),
                              into dbQueue: DatabaseQueue) throws -> StartedWorkout {
         try dbQueue.write { db in
+            // Only one active session ever exists by design. Unfinished
+            // workouts stranded by crashes/kills are invisible to every view,
+            // so clean them up rather than let ghost rows accumulate (and sync).
+            try db.execute(sql: "DELETE FROM workout WHERE finishedAt IS NULL")
+
             let workout = WorkoutRecord(templateId: template?.id, name: name, startedAt: startedAt)
             try workout.insert(db)
 
@@ -124,10 +139,18 @@ public enum SessionStore {
         _ = try dbQueue.write { try WorkoutItemRecord.deleteOne($0, key: id) }
     }
 
-    /// Finishing deletes never-completed planned sets, stamps finishedAt, and
-    /// removes exercises left with no sets.
+    /// Finishing deletes never-completed planned sets and exercises left with
+    /// no sets, then stamps finishedAt.
+    ///
+    /// Returns false — after deleting the whole workout — when no completed
+    /// sets remain: an empty workout must not pollute history. Otherwise
+    /// returns true; if `finishedAt` is more than an hour after the last
+    /// completed set (a stale session finished from the recovery prompt), the
+    /// last set's completedAt is stored instead so the recorded duration
+    /// isn't inflated.
+    @discardableResult
     public static func finish(workoutId: String, at finishedAt: Date = Date(),
-                              in dbQueue: DatabaseQueue) throws {
+                              in dbQueue: DatabaseQueue) throws -> Bool {
         try dbQueue.write { db in
             try db.execute(sql: """
                 DELETE FROM workoutSet WHERE completedAt IS NULL AND workoutItemId IN
@@ -137,10 +160,30 @@ public enum SessionStore {
                 DELETE FROM workoutItem WHERE workoutId = ? AND id NOT IN
                   (SELECT DISTINCT workoutItemId FROM workoutSet)
                 """, arguments: [workoutId])
+
+            let remainingSets = try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM workoutSet WHERE workoutItemId IN
+                  (SELECT id FROM workoutItem WHERE workoutId = ?)
+                """, arguments: [workoutId]) ?? 0
+            if remainingSets == 0 {
+                _ = try WorkoutRecord.deleteOne(db, key: workoutId)
+                return false
+            }
+
+            // All surviving sets have completedAt (the NULLs were just deleted).
+            let maxCompleted = try Date.fetchOne(db, sql: """
+                SELECT MAX(completedAt) FROM workoutSet WHERE workoutItemId IN
+                  (SELECT id FROM workoutItem WHERE workoutId = ?)
+                """, arguments: [workoutId])
+            var stamp = finishedAt
+            if let maxCompleted, finishedAt.timeIntervalSince(maxCompleted) > 3600 {
+                stamp = maxCompleted
+            }
             if var workout = try WorkoutRecord.fetchOne(db, key: workoutId) {
-                workout.finishedAt = finishedAt
+                workout.finishedAt = stamp
                 try workout.update(db)
             }
+            return true
         }
     }
 

@@ -26,6 +26,10 @@ struct FitnessTrackerApp: App {
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    if phase == .background {
+                        // Debounced set edits must hit disk before a kill.
+                        session.flushPendingSaves()
+                    }
                     if phase == .active || phase == .background {
                         sync.pushSoon()
                     }

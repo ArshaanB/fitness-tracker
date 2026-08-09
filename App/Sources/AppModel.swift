@@ -35,8 +35,14 @@ final class AppModel {
     private(set) var lastRestByExerciseId: [String: Int] = [:]
     private(set) var templates: [TemplateSummary] = []
     private(set) var workoutsAscending: [LoadedWorkout] = []
+    private(set) var workoutsById: [String: LoadedWorkout] = [:]
     private(set) var weeklyGoal = 3
     private(set) var bodyWeights: [BodyWeightRecord] = []
+    // Weekly consistency stats, computed once per reload instead of per render
+    // (they walk all 736 workouts through Calendar math).
+    private(set) var weekBuckets: [WeekBucket] = []
+    private(set) var currentStreak = 0
+    private(set) var weeklyAverage = 0.0
     private(set) var db: DatabaseQueue?
 
     func bootstrap() async {
@@ -74,8 +80,13 @@ final class AppModel {
         lastRestByExerciseId = result.lastRest
         templates = result.templates
         workoutsAscending = result.workoutsAscending
+        workoutsById = Dictionary(uniqueKeysWithValues: result.workoutsAscending.map { ($0.id, $0) })
         weeklyGoal = result.weeklyGoal
         bodyWeights = result.bodyWeights
+        weekBuckets = WeeklyStats.weekBuckets(workoutsAscending: result.workoutsAscending, weeks: 12)
+        currentStreak = WeeklyStats.currentStreak(workoutsAscending: result.workoutsAscending,
+                                                  goal: result.weeklyGoal)
+        weeklyAverage = WeeklyStats.averagePerWeek(workoutsAscending: result.workoutsAscending, weeks: 12)
         state = .ready
     }
 
@@ -83,12 +94,19 @@ final class AppModel {
         guard let db else { return }
         try? SettingsStore.setWeeklyGoal(goal, in: db)
         weeklyGoal = max(1, min(goal, 7))
+        currentStreak = WeeklyStats.currentStreak(workoutsAscending: workoutsAscending, goal: weeklyGoal)
     }
 
     func logBodyWeight(_ weight: Double) {
         guard let db else { return }
         try? BodyWeightStore.log(weight: weight, in: db)
         bodyWeights = (try? BodyWeightStore.all(from: db)) ?? bodyWeights
+    }
+
+    func deleteBodyWeight(id: String) {
+        guard let db else { return }
+        try? BodyWeightStore.delete(id: id, in: db)
+        bodyWeights.removeAll { $0.id == id }
     }
 
     /// Imports a Strong CSV chosen in the file picker. Idempotent — re-importing
@@ -125,12 +143,17 @@ final class AppModel {
                                                   in: .userDomainMask,
                                                   appropriateFor: nil, create: true)
         let db = try AppDatabase.open(at: support.appendingPathComponent("fitness.sqlite").path)
-        let workoutCount = try db.read { try WorkoutRecord.fetchCount($0) }
-        if workoutCount == 0,
+        #if DEBUG
+        // Dev-only, explicit opt-in seed (SIMCTL_CHILD_SEED_CSV=1). An
+        // unconditional seed made every install "have data", which killed the
+        // cloud-restore path for real users.
+        if ProcessInfo.processInfo.environment["SEED_CSV"] != nil,
+           try db.read({ try WorkoutRecord.fetchCount($0) }) == 0,
            let url = Bundle.main.url(forResource: "strong_workouts", withExtension: "csv") {
             let text = try String(contentsOf: url, encoding: .utf8)
             try StrongImporter.run(try StrongImport.parse(csv: text), into: db)
         }
+        #endif
         return db
     }
 

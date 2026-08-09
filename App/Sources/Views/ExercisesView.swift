@@ -19,9 +19,33 @@ struct ExercisesView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                if !model.isReady {
-                    ProgressView("Importing history…")
+                switch model.state {
+                case .loading:
+                    ProgressView("Loading…")
                         .padding(.top, 120)
+                case .failed(let message):
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .padding(.top, 120)
+                        .padding(.horizontal, 30)
+                case .ready where model.exercises.isEmpty:
+                    VStack(spacing: 8) {
+                        Image(systemName: "list.bullet")
+                            .font(.title)
+                            .foregroundStyle(Theme.inkTertiary)
+                        Text("No exercises yet")
+                            .font(.headline)
+                            .foregroundStyle(Theme.ink)
+                        Text("Exercises appear here after your first workout or a Strong CSV import from Profile.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.inkSecondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 280)
+                    }
+                    .padding(.top, 120)
+                case .ready:
+                    EmptyView()
                 }
                 LazyVStack(spacing: 8) {
                     ForEach(filtered) { exercise in
@@ -57,6 +81,10 @@ struct ExercisesView: View {
             .navigationDestination(for: String.self) { exerciseId in
                 if let exercise = model.exercises.first(where: { $0.id == exerciseId }) {
                     ExerciseDetailView(exercise: exercise)
+                } else {
+                    Text("This exercise is no longer available.")
+                        .foregroundStyle(Theme.inkSecondary)
+                        .appBackground()
                 }
             }
             #if DEBUG

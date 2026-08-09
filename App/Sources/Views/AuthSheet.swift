@@ -10,6 +10,7 @@ struct AuthSheet: View {
     enum Step {
         case email
         case code
+        case mergeChoice(localWorkouts: Int)
     }
 
     @State private var step: Step = .email
@@ -53,8 +54,12 @@ struct AuthSheet: View {
                         .padding(13)
                         .background(.white, in: RoundedRectangle(cornerRadius: 12))
                     actionButton("Verify & sign in", disabled: code.count < 6) {
-                        try await sync.verify(email: email, code: code, appModel: model)
-                        dismiss()
+                        let done = try await sync.verify(email: email, code: code, appModel: model)
+                        if done {
+                            dismiss()
+                        } else if case .mergeConflict(let count) = sync.pendingDecision {
+                            step = .mergeChoice(localWorkouts: count)
+                        }
                     }
                     Button("Use a different email") {
                         step = .email
@@ -62,6 +67,22 @@ struct AuthSheet: View {
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.accent)
+
+                case .mergeChoice(let localWorkouts):
+                    Text("This phone has \(localWorkouts) workouts that aren't linked to an account yet, and this account already has data in the cloud. Which should this phone use?")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.inkSecondary)
+                    actionButton("Use my cloud data (replace phone)", disabled: false) {
+                        await sync.resolveDecision(uploadLocal: false, appModel: model)
+                        dismiss()
+                    }
+                    actionButton("Upload phone data to this account", disabled: false) {
+                        await sync.resolveDecision(uploadLocal: true, appModel: model)
+                        dismiss()
+                    }
+                    Text("Uploading merges the phone's workouts into the account. Replacing discards the phone's unlinked workouts.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
 
                 if let errorMessage {

@@ -24,17 +24,33 @@ public enum StrongImport {
         let missing = requiredColumns.filter { col[$0] == nil }
         guard missing.isEmpty else { throw StrongImportError.missingColumns(missing) }
 
+        // Strong CSVs carry wall-clock times with no timezone info. Parsing in
+        // the device's zone keeps displayed workout times matching what the
+        // user remembers ("Morning Workout · 10:02 AM"), consistent with
+        // natively logged workouts. Known tradeoff: re-importing the same file
+        // after moving timezones shifts the parsed Dates, so the (startedAt,
+        // name) idempotency check won't match — accepted, since import is a
+        // one-time migration. The UTC formatter is a fallback for wall times
+        // that don't exist locally (spring-forward DST gaps), which would
+        // otherwise be silently dropped.
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         dateFormatter.timeZone = .current
+        let fallbackFormatter = DateFormatter()
+        fallbackFormatter.locale = Locale(identifier: "en_US_POSIX")
+        fallbackFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        fallbackFormatter.timeZone = TimeZone(identifier: "UTC")
 
         func field(_ row: [String], _ name: String) -> String {
             guard let i = col[name], i < row.count else { return "" }
             return row[i]
         }
         func positiveDouble(_ s: String) -> Double? {
-            guard let v = Double(s), v > 0 else { return nil }
+            // Exports from comma-decimal locales write "82,5"; and reject
+            // non-finite values ("inf"/"nan") so they never reach the DB.
+            let normalized = s.replacingOccurrences(of: ",", with: ".")
+            guard let v = Double(normalized), v.isFinite, v > 0 else { return nil }
             return v
         }
 
@@ -52,7 +68,8 @@ public enum StrongImport {
             let dateString = field(row, "Date")
             let exerciseName = field(row, "Exercise Name")
             guard !dateString.isEmpty, !exerciseName.isEmpty,
-                  let date = dateFormatter.date(from: dateString) else { continue }
+                  let date = dateFormatter.date(from: dateString)
+                        ?? fallbackFormatter.date(from: dateString) else { continue }
 
             let key = WorkoutKey(date: dateString, name: field(row, "Workout Name"))
             if workoutsByKey[key] == nil {
