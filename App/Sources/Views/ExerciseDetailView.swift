@@ -13,6 +13,7 @@ struct ExerciseDetailView: View {
     let exercise: ExerciseHistory
     @State private var metric: Metric = .e1rm
     @State private var scrubbed: ChartPoint?
+    @State private var zoom = ChartZoom()
 
     private var availableMetrics: [Metric] {
         // "Heaviest" was cut: it tracks est. 1RM almost exactly and already
@@ -164,8 +165,15 @@ struct ExerciseDetailView: View {
         return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
     }
 
+    private var visibleXDomain: ClosedRange<Date> { zoom.domain ?? xDomain }
+
+    private var visiblePoints: [ChartPoint] {
+        let visible = chartPoints.filter { visibleXDomain.contains($0.date) }
+        return visible.isEmpty ? chartPoints : visible
+    }
+
     private var yDomain: ClosedRange<Double> {
-        let values = chartPoints.map(\.value)
+        let values = visiblePoints.map(\.value)
         guard let min = values.min(), let max = values.max() else { return 0...1 }
         let pad = Swift.max((max - min) * 0.15, 5)
         return (min - pad)...(max + pad)
@@ -204,8 +212,9 @@ struct ExerciseDetailView: View {
                 }
                 // Sparse history (one session, or isolated sessions between
                 // gaps) draws no visible line, so mark the points themselves.
-                if chartPoints.count <= 30 {
-                    ForEach(chartPoints) { point in
+                // Zooming in far enough always reveals individual sessions.
+                if visiblePoints.count <= 30 {
+                    ForEach(visiblePoints) { point in
                         PointMark(x: .value("Date", point.date), y: .value("Value", point.value))
                             .foregroundStyle(Theme.accent)
                             .symbolSize(30)
@@ -218,14 +227,9 @@ struct ExerciseDetailView: View {
                     PointMark(x: .value("Date", scrubbed.date), y: .value("Value", scrubbed.value))
                         .foregroundStyle(Theme.accent)
                         .symbolSize(70)
-                        .annotation(position: .top, spacing: 8,
-                                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                            ScrubTooltip(title: scrubbed.date.formatted(.dateTime.month().day().year()),
-                                         value: format(scrubbed.value))
-                        }
                 }
             }
-            .chartXScale(domain: xDomain)
+            .chartXScale(domain: visibleXDomain)
             .chartYScale(domain: yDomain)
             .chartPlotStyle { $0.clipped() }
             .chartXAxis {
@@ -245,28 +249,49 @@ struct ExerciseDetailView: View {
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { drag in
-                                    guard let plotFrame = proxy.plotFrame else { return }
+                                    guard !zoom.isZooming,
+                                          let plotFrame = proxy.plotFrame else { return }
                                     let x = drag.location.x - geo[plotFrame].origin.x
                                     guard let date: Date = proxy.value(atX: x) else { return }
-                                    scrubbed = chartPoints.min {
+                                    scrubbed = visiblePoints.min {
                                         abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
                                     }
                                 }
                                 .onEnded { _ in scrubbed = nil })
+                        .simultaneousGesture(
+                            MagnifyGesture()
+                                .onChanged { value in
+                                    scrubbed = nil
+                                    zoom.magnify(value.magnification, within: xDomain)
+                                }
+                                .onEnded { _ in zoom.endGesture() })
+                        .onTapGesture(count: 2) { zoom.reset() }
+                }
+            }
+            // Chart annotations clip (or worse) near plot edges; a readout
+            // pinned above the chart never does.
+            .overlay(alignment: .top) {
+                if let scrubbed {
+                    ScrubTooltip(title: scrubbed.date.formatted(.dateTime.month().day().year()),
+                                 value: format(scrubbed.value))
                 }
             }
             .frame(height: 170)
         }
         .padding(14)
         .cardStyle()
-        .onChange(of: metric) { scrubbed = nil }
+        .onChange(of: metric) {
+            scrubbed = nil
+            zoom.reset()
+        }
         #if DEBUG
         .task {
             // Screenshot hook: render the scrub tooltip without a live touch.
-            if ProcessInfo.processInfo.environment["SCRUB"] != nil {
+            if let mode = ProcessInfo.processInfo.environment["SCRUB"] {
                 try? await Task.sleep(for: .seconds(1))
                 let points = chartPoints
-                if points.count > 4 { scrubbed = points[points.count * 2 / 3] }
+                guard !points.isEmpty else { return }
+                scrubbed = mode == "edge" ? points.last : points[points.count * 2 / 3]
             }
         }
         #endif
@@ -292,6 +317,10 @@ struct ScrubTooltip: View {
         .padding(.vertical, 6)
         .background(Theme.ink, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         .shadow(color: Theme.ink.opacity(0.25), radius: 6, y: 3)
+        // NOTE: never add .fixedSize() here — combined with the chart
+        // annotation's overflowResolution it creates a layout loop that hangs
+        // the main thread for the better part of a minute. Titles stay compact
+        // instead so they fit the squeezed area near chart edges.
     }
 }
 

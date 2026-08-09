@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var showWeightSheet = false
     @State private var scrubbedWeek: WeekBucket?
     @State private var scrubbedWeight: BodyWeightRecord?
+    @State private var weightZoom = ChartZoom()
 
     private var buckets: [WeekBucket] {
         WeeklyStats.weekBuckets(workoutsAscending: model.workoutsAscending, weeks: 12)
@@ -29,15 +30,20 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    tiles
-                    frequencyCard
-                    bodyWeightCard
-                    accountCard
-                    settingsCard
+                if !model.isReady {
+                    ProgressView("Importing history…")
+                        .padding(.top, 120)
+                } else {
+                    LazyVStack(spacing: 12) {
+                        tiles
+                        frequencyCard
+                        bodyWeightCard
+                        accountCard
+                        settingsCard
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 24)
             }
             .appBackground()
             .navigationTitle("Profile")
@@ -117,16 +123,12 @@ struct ProfileView: View {
                 RuleMark(y: .value("Goal", model.weeklyGoal))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .foregroundStyle(Theme.inkTertiary)
+            }
+            .overlay(alignment: .top) {
                 if let scrubbedWeek {
-                    PointMark(x: .value("Week", scrubbedWeek.weekStart, unit: .weekOfYear),
-                              y: .value("Workouts", Double(scrubbedWeek.workoutCount)))
-                        .symbolSize(0)
-                        .annotation(position: .top, spacing: 6,
-                                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                            ScrubTooltip(
-                                title: "Week of \(scrubbedWeek.weekStart.formatted(.dateTime.month().day()))",
-                                value: "\(scrubbedWeek.workoutCount) of \(model.weeklyGoal) workouts")
-                        }
+                    ScrubTooltip(
+                        title: "Week of \(scrubbedWeek.weekStart.formatted(.dateTime.month().day()))",
+                        value: "\(scrubbedWeek.workoutCount) of \(model.weeklyGoal) workouts")
                 }
             }
             .chartYScale(domain: 0...Double(max(model.weeklyGoal + 1,
@@ -184,7 +186,7 @@ struct ProfileView: View {
             }
             if model.bodyWeights.count >= 2 {
                 Chart {
-                    ForEach(model.bodyWeights, id: \.id) { entry in
+                    ForEach(visibleWeights, id: \.id) { entry in
                         AreaMark(x: .value("Date", entry.measuredAt),
                                  yStart: .value("Base", weightDomain.lowerBound),
                                  yEnd: .value("Weight", entry.weight))
@@ -203,14 +205,16 @@ struct ProfileView: View {
                                   y: .value("Weight", scrubbedWeight.weight))
                             .foregroundStyle(Theme.accent)
                             .symbolSize(70)
-                            .annotation(position: .top, spacing: 8,
-                                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                                ScrubTooltip(
-                                    title: scrubbedWeight.measuredAt.formatted(.dateTime.month().day().year()),
-                                    value: "\(Format.weight(scrubbedWeight.weight)) lbs")
-                            }
                     }
                 }
+                .overlay(alignment: .top) {
+                    if let scrubbedWeight {
+                        ScrubTooltip(
+                            title: scrubbedWeight.measuredAt.formatted(.dateTime.month().day().year()),
+                            value: "\(Format.weight(scrubbedWeight.weight)) lbs")
+                    }
+                }
+                .chartXScale(domain: weightZoom.domain ?? weightXDomain)
                 .chartYScale(domain: weightDomain)
                 .chartPlotStyle { $0.clipped() }
                 .chartXAxis {
@@ -231,14 +235,23 @@ struct ProfileView: View {
                             .gesture(
                                 DragGesture(minimumDistance: 0)
                                     .onChanged { drag in
-                                        guard let plotFrame = proxy.plotFrame else { return }
+                                        guard !weightZoom.isZooming,
+                                              let plotFrame = proxy.plotFrame else { return }
                                         let x = drag.location.x - geo[plotFrame].origin.x
                                         guard let date: Date = proxy.value(atX: x) else { return }
-                                        scrubbedWeight = model.bodyWeights.min {
+                                        scrubbedWeight = visibleWeights.min {
                                             abs($0.measuredAt.timeIntervalSince(date)) < abs($1.measuredAt.timeIntervalSince(date))
                                         }
                                     }
                                     .onEnded { _ in scrubbedWeight = nil })
+                            .simultaneousGesture(
+                                MagnifyGesture()
+                                    .onChanged { value in
+                                        scrubbedWeight = nil
+                                        weightZoom.magnify(value.magnification, within: weightXDomain)
+                                    }
+                                    .onEnded { _ in weightZoom.endGesture() })
+                            .onTapGesture(count: 2) { weightZoom.reset() }
                     }
                 }
                 .frame(height: 120)
@@ -253,8 +266,21 @@ struct ProfileView: View {
         .cardStyle()
     }
 
+    private var weightXDomain: ClosedRange<Date> {
+        let dates = model.bodyWeights.map(\.measuredAt)
+        guard let first = dates.min(), let last = dates.max() else { return Date()...Date() }
+        let pad = Swift.max(last.timeIntervalSince(first) * 0.04, 86400)
+        return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
+    }
+
+    private var visibleWeights: [BodyWeightRecord] {
+        guard let domain = weightZoom.domain else { return model.bodyWeights }
+        let visible = model.bodyWeights.filter { domain.contains($0.measuredAt) }
+        return visible.isEmpty ? model.bodyWeights : visible
+    }
+
     private var weightDomain: ClosedRange<Double> {
-        let values = model.bodyWeights.map(\.weight)
+        let values = visibleWeights.map(\.weight)
         guard let min = values.min(), let max = values.max() else { return 0...1 }
         let pad = Swift.max((max - min) * 0.2, 2)
         return (min - pad)...(max + pad)

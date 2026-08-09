@@ -19,6 +19,10 @@ struct ExercisesView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
+                if !model.isReady {
+                    ProgressView("Importing history…")
+                        .padding(.top, 120)
+                }
                 LazyVStack(spacing: 8) {
                     ForEach(filtered) { exercise in
                         NavigationLink(value: exercise.id) {
