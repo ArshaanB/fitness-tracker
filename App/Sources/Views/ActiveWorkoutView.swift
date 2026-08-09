@@ -103,6 +103,15 @@ struct ActiveWorkoutView: View {
             if ProcessInfo.processInfo.environment["SHOW_FINISH"] != nil {
                 showFinish = true
             }
+            // Full-cycle test hook: finish the workout without a tap.
+            if ProcessInfo.processInfo.environment["AUTO_FINISH"] != nil {
+                Task {
+                    do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                    session.finish()
+                    model.refresh()
+                    dismiss()
+                }
+            }
             #endif
         }
         // A dense in-gym grid: cap text scaling rather than break the layout.
