@@ -3,13 +3,22 @@ import SwiftUI
 @main
 struct FitnessTrackerApp: App {
     @State private var model = AppModel()
+    @State private var session = WorkoutSessionModel()
 
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environment(model)
+                .environment(session)
                 .tint(Theme.accent)
-                .task { await model.bootstrap() }
+                .task {
+                    await model.bootstrap()
+                    if let db = model.db {
+                        session.configure(db: db)
+                        session.resumeIfNeeded(baselines: model.bestE1RMByExerciseId,
+                                               exerciseNames: model.exerciseNames)
+                    }
+                }
         }
     }
 }
@@ -35,8 +44,7 @@ struct RootTabView: View {
             HistoryView()
                 .tabItem { Label("History", systemImage: "clock") }
                 .tag(Tab.history)
-            PlaceholderView(title: "Workout",
-                            message: "Templates and live logging arrive in the next phase.")
+            WorkoutTabView()
                 .tabItem { Label("Workout", systemImage: "dumbbell") }
                 .tag(Tab.workout)
             ExercisesView()
