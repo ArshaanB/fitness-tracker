@@ -9,6 +9,8 @@ struct ProfileView: View {
     @State private var showImporter = false
     @State private var importMessage: String?
     @State private var showWeightSheet = false
+    @State private var scrubbedWeek: WeekBucket?
+    @State private var scrubbedWeight: BodyWeightRecord?
 
     private var buckets: [WeekBucket] {
         WeeklyStats.weekBuckets(workoutsAscending: model.workoutsAscending, weeks: 12)
@@ -111,8 +113,20 @@ struct ProfileView: View {
                             .font(.system(size: 9))
                             .foregroundStyle(Theme.inkTertiary)
                     }
+                if let scrubbedWeek {
+                    PointMark(x: .value("Week", scrubbedWeek.weekStart, unit: .weekOfYear),
+                              y: .value("Workouts", Double(scrubbedWeek.workoutCount)))
+                        .symbolSize(0)
+                        .annotation(position: .top, spacing: 6,
+                                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            ScrubTooltip(
+                                title: "Week of \(scrubbedWeek.weekStart.formatted(.dateTime.month().day()))",
+                                value: "\(scrubbedWeek.workoutCount) of \(model.weeklyGoal) workouts")
+                        }
+                }
             }
-            .chartYScale(domain: 0...Double(max(5, model.weeklyGoal + 1)))
+            .chartYScale(domain: 0...Double(max(model.weeklyGoal + 1,
+                                                (buckets.map(\.workoutCount).max() ?? 0) + 1)))
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: 3)) {
                     AxisValueLabel(format: .dateTime.month().day())
@@ -123,6 +137,22 @@ struct ProfileView: View {
                 AxisMarks(values: [2, 4]) {
                     AxisGridLine().foregroundStyle(Theme.hairline)
                     AxisValueLabel().font(.caption2).foregroundStyle(Theme.inkTertiary)
+                }
+            }
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { drag in
+                                    guard let plotFrame = proxy.plotFrame else { return }
+                                    let x = drag.location.x - geo[plotFrame].origin.x
+                                    guard let date: Date = proxy.value(atX: x) else { return }
+                                    scrubbedWeek = buckets.min {
+                                        abs($0.weekStart.timeIntervalSince(date)) < abs($1.weekStart.timeIntervalSince(date))
+                                    }
+                                }
+                                .onEnded { _ in scrubbedWeek = nil })
                 }
             }
             .frame(height: 130)
@@ -149,16 +179,36 @@ struct ProfileView: View {
                     .foregroundStyle(Theme.accent)
             }
             if model.bodyWeights.count >= 2 {
-                Chart(model.bodyWeights, id: \.id) { entry in
-                    AreaMark(x: .value("Date", entry.measuredAt), y: .value("Weight", entry.weight))
-                        .foregroundStyle(
-                            LinearGradient(colors: [Theme.accent.opacity(0.16), Theme.accent.opacity(0.01)],
-                                           startPoint: .top, endPoint: .bottom))
-                    LineMark(x: .value("Date", entry.measuredAt), y: .value("Weight", entry.weight))
-                        .foregroundStyle(Theme.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                Chart {
+                    ForEach(model.bodyWeights, id: \.id) { entry in
+                        AreaMark(x: .value("Date", entry.measuredAt),
+                                 yStart: .value("Base", weightDomain.lowerBound),
+                                 yEnd: .value("Weight", entry.weight))
+                            .foregroundStyle(
+                                LinearGradient(colors: [Theme.accent.opacity(0.16), Theme.accent.opacity(0.01)],
+                                               startPoint: .top, endPoint: .bottom))
+                        LineMark(x: .value("Date", entry.measuredAt), y: .value("Weight", entry.weight))
+                            .foregroundStyle(Theme.accent)
+                            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    }
+                    if let scrubbedWeight {
+                        RuleMark(x: .value("Date", scrubbedWeight.measuredAt))
+                            .foregroundStyle(Theme.inkTertiary.opacity(0.55))
+                            .lineStyle(StrokeStyle(lineWidth: 1))
+                        PointMark(x: .value("Date", scrubbedWeight.measuredAt),
+                                  y: .value("Weight", scrubbedWeight.weight))
+                            .foregroundStyle(Theme.accent)
+                            .symbolSize(70)
+                            .annotation(position: .top, spacing: 8,
+                                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                                ScrubTooltip(
+                                    title: scrubbedWeight.measuredAt.formatted(.dateTime.month().day().year()),
+                                    value: "\(Format.weight(scrubbedWeight.weight)) lbs")
+                            }
+                    }
                 }
                 .chartYScale(domain: weightDomain)
+                .chartPlotStyle { $0.clipped() }
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 3)) {
                         AxisValueLabel(format: .dateTime.month().day())
@@ -169,6 +219,22 @@ struct ProfileView: View {
                     AxisMarks(values: .automatic(desiredCount: 3)) {
                         AxisGridLine().foregroundStyle(Theme.hairline)
                         AxisValueLabel().font(.caption2).foregroundStyle(Theme.inkTertiary)
+                    }
+                }
+                .chartOverlay { proxy in
+                    GeometryReader { geo in
+                        Rectangle().fill(.clear).contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { drag in
+                                        guard let plotFrame = proxy.plotFrame else { return }
+                                        let x = drag.location.x - geo[plotFrame].origin.x
+                                        guard let date: Date = proxy.value(atX: x) else { return }
+                                        scrubbedWeight = model.bodyWeights.min {
+                                            abs($0.measuredAt.timeIntervalSince(date)) < abs($1.measuredAt.timeIntervalSince(date))
+                                        }
+                                    }
+                                    .onEnded { _ in scrubbedWeight = nil })
                     }
                 }
                 .frame(height: 120)
