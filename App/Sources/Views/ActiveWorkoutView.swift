@@ -10,6 +10,7 @@ struct ActiveWorkoutView: View {
     @State private var showPicker = false
     @State private var showDiscardConfirm = false
     @State private var showStalePrompt = false
+    @State private var historyExercise: ExerciseHistory?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +19,9 @@ struct ActiveWorkoutView: View {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     ForEach(session.exercises) { exercise in
-                        ExerciseSessionCard(exercise: exercise)
+                        ExerciseSessionCard(exercise: exercise) {
+                            historyExercise = model.exercises.first { $0.id == exercise.exerciseId }
+                        }
                     }
                     Button("+ Add exercise") { showPicker = true }
                         .font(.subheadline.weight(.semibold))
@@ -41,6 +44,16 @@ struct ActiveWorkoutView: View {
         }
         .animation(.spring(duration: 0.35), value: session.rest?.endDate)
         .sheet(isPresented: $showFinish) { FinishSheet(dismissWorkout: { dismiss() }) }
+        .sheet(item: $historyExercise) { exercise in
+            NavigationStack {
+                ExerciseDetailView(exercise: exercise)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { historyExercise = nil }
+                        }
+                    }
+            }
+        }
         .sheet(isPresented: $showPicker) {
             ExercisePickerView { exercise in
                 session.addExercise(exerciseId: exercise.id,
@@ -168,37 +181,44 @@ struct ElapsedChip: View {
 private struct ExerciseSessionCard: View {
     @Environment(WorkoutSessionModel.self) private var session
     let exercise: WorkoutSessionModel.SessionExercise
+    let onShowHistory: () -> Void
 
     private var expanded: Bool { session.expandedExerciseId == exercise.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exercise.name)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text(meta)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .monospacedDigit()
+                }
+                Spacer()
+                Button(action: onShowHistory) {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.accent.opacity(0.09), in: Circle())
+                }
+                .buttonStyle(.plain)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .onTapGesture {
                 withAnimation(.spring(duration: 0.3)) {
                     session.expandedExerciseId = expanded ? nil : exercise.id
                 }
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(exercise.name)
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(Theme.ink)
-                            .lineLimit(1)
-                        Text(meta)
-                            .font(.footnote)
-                            .foregroundStyle(Theme.inkSecondary)
-                            .monospacedDigit()
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
-                }
-                .padding(14)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
             .contextMenu {
                 Button("Remove exercise", role: .destructive) {
                     session.removeExercise(exerciseId: exercise.id)
