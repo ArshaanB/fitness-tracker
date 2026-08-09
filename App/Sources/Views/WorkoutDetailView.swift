@@ -14,6 +14,12 @@ struct WorkoutDetailView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
+                Text(Self.dateFormatter.string(from: workout.startedAt))
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 6)
+
                 HStack(spacing: 14) {
                     if let duration = workout.durationSeconds {
                         summaryTile(Format.duration(duration), "Duration")
@@ -33,13 +39,6 @@ struct WorkoutDetailView: View {
         .appBackground()
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.large)
-        .safeAreaInset(edge: .top) {
-            Text(Self.dateFormatter.string(from: workout.startedAt))
-                .font(.footnote)
-                .foregroundStyle(Theme.inkSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-        }
     }
 
     private func summaryTile(_ value: String, _ label: String) -> some View {

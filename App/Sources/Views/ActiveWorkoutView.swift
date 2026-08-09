@@ -8,6 +8,7 @@ struct ActiveWorkoutView: View {
 
     @State private var showFinish = false
     @State private var showPicker = false
+    @State private var showOptions = false
     @State private var showDiscardConfirm = false
     @State private var showStalePrompt = false
     @State private var historyExercise: ExerciseHistory?
@@ -103,19 +104,8 @@ struct ActiveWorkoutView: View {
                 ElapsedChip(since: session.startedAt)
             }
             Spacer()
-            Menu {
-                Button {
-                    showPicker = true
-                } label: {
-                    Label("Add Exercise", systemImage: "plus")
-                }
-                Divider()
-                Button(role: .destructive) {
-                    showDiscardConfirm = true
-                } label: {
-                    Label("Discard Workout", systemImage: "trash")
-                }
-                .tint(.red)  // app-wide accent otherwise recolors the icon
+            Button {
+                showOptions = true
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.footnote.weight(.bold))
@@ -125,7 +115,13 @@ struct ActiveWorkoutView: View {
                     .shadow(color: Color(red: 16 / 255, green: 38 / 255, blue: 74 / 255).opacity(0.08),
                             radius: 6, y: 2)
             }
+            .buttonStyle(.plain)
             .padding(.trailing, 2)
+            .confirmationDialog("Workout options", isPresented: $showOptions) {
+                Button("Add Exercise") { showPicker = true }
+                Button("Discard Workout", role: .destructive) { showDiscardConfirm = true }
+                Button("Cancel", role: .cancel) {}
+            }
             Button("Finish") { showFinish = true }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
