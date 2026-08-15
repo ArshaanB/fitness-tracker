@@ -480,32 +480,69 @@ private struct LogWeightSheet: View {
     @State private var text = ""
     @FocusState private var focused: Bool
 
+    @State private var pendingDelete: BodyWeightRecord?
+
     private var parsed: Double? {
         Double(text.replacingOccurrences(of: ",", with: "."))
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 14) {
-                TextField(lastWeight.map { Format.weight($0) } ?? "180", text: $text)
-                    .keyboardType(.decimalPad)
-                    .font(.system(size: 44, weight: .bold))
-                    .multilineTextAlignment(.center)
-                    .monospacedDigit()
-                    .focused($focused)
-                Text("lbs").font(.subheadline).foregroundStyle(Theme.inkSecondary)
-                if let last = model.bodyWeights.last {
-                    Button(role: .destructive) {
-                        model.deleteBodyWeight(id: last.id)
-                        dismiss()
-                    } label: {
-                        Text("Delete last entry (\(Format.weight(last.weight)) lbs, \(last.measuredAt.formatted(.dateTime.month().day())))")
-                            .font(.footnote.weight(.medium))
+            ScrollView {
+                VStack(spacing: 14) {
+                    TextField(lastWeight.map { Format.weight($0) } ?? "180", text: $text)
+                        .keyboardType(.decimalPad)
+                        .font(.system(size: 44, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .monospacedDigit()
+                        .focused($focused)
+                    Text("lbs").font(.subheadline).foregroundStyle(Theme.inkSecondary)
+
+                    if !model.bodyWeights.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("RECENT ENTRIES")
+                                .font(.system(size: 11, weight: .semibold))
+                                .kerning(0.8)
+                                .foregroundStyle(Theme.inkTertiary)
+                                .padding(.bottom, 6)
+                            VStack(spacing: 0) {
+                                let recent = Array(model.bodyWeights.suffix(10).reversed())
+                                ForEach(Array(recent.enumerated()), id: \.element.id) { index, entry in
+                                    HStack {
+                                        Text("\(Format.weight(entry.weight)) lbs")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(Theme.ink)
+                                            .monospacedDigit()
+                                        Spacer()
+                                        Text(entry.measuredAt.formatted(.dateTime.month().day().year()))
+                                            .font(.footnote)
+                                            .foregroundStyle(Theme.inkSecondary)
+                                        Button {
+                                            pendingDelete = entry
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.footnote)
+                                                .foregroundStyle(Theme.ringLow)
+                                                .frame(width: 30, height: 30)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    if index < recent.count - 1 {
+                                        Divider().overlay(Theme.hairline).padding(.leading, 14)
+                                    }
+                                }
+                            }
+                            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .padding(.top, 14)
                     }
                 }
-                Spacer()
+                .padding(.top, 24)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 24)
             }
-            .padding(.top, 40)
             .appBackground()
             .navigationTitle("Log Body Weight")
             .navigationBarTitleDisplayMode(.inline)
@@ -523,8 +560,23 @@ private struct LogWeightSheet: View {
                     .disabled(parsed == nil)
                 }
             }
+            .alert("Delete this entry?", isPresented: .init(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } })) {
+                Button("Delete", role: .destructive) {
+                    if let entry = pendingDelete {
+                        model.deleteBodyWeight(id: entry.id)
+                    }
+                    pendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { pendingDelete = nil }
+            } message: {
+                if let entry = pendingDelete {
+                    Text("\(Format.weight(entry.weight)) lbs, logged \(entry.measuredAt.formatted(.dateTime.month().day().year())).")
+                }
+            }
             .onAppear { focused = true }
         }
-        .presentationDetents([.height(280)])
+        .presentationDetents([.medium, .large])
     }
 }
