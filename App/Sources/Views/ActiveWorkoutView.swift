@@ -127,6 +127,8 @@ struct ActiveWorkoutView: View {
                 ElapsedChip(since: session.startedAt)
             }
             Spacer()
+            IntensityRing(ratio: session.sessionIntensity, size: 34)
+                .padding(.trailing, 6)
             Button {
                 showOptions = true
             } label: {
@@ -271,7 +273,7 @@ private struct ExerciseSessionCard: View {
     private var meta: String {
         var parts = ["\(exercise.completedCount) of \(exercise.sets.count) sets"]
         if let rest = exercise.restSeconds {
-            parts.append("rest \(String(format: "%d:%02d", rest / 60, rest % 60))")
+            parts.append("Rest \(String(format: "%d:%02d", rest / 60, rest % 60))")
         }
         return parts.joined(separator: " · ")
     }

@@ -103,6 +103,14 @@ final class AppModel {
         bodyWeights = (try? BodyWeightStore.all(from: db)) ?? bodyWeights
     }
 
+    /// Deletes a logged workout and everything in it (items, sets), then
+    /// recomputes records and stats.
+    func deleteWorkout(id: String) {
+        guard let db else { return }
+        try? SessionStore.discard(workoutId: id, in: db)
+        refresh()
+    }
+
     func deleteBodyWeight(id: String) {
         guard let db else { return }
         try? BodyWeightStore.delete(id: id, in: db)

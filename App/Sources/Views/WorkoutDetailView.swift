@@ -3,7 +3,10 @@ import SwiftUI
 
 struct WorkoutDetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
     let workout: LoadedWorkout
+
+    @State private var showDeleteConfirm = false
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -40,6 +43,31 @@ struct WorkoutDetailView: View {
         .appBackground()
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        Label("Delete Workout", systemImage: "trash")
+                    }
+                    .tint(.red)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+            }
+        }
+        .alert("Delete this workout?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                model.deleteWorkout(id: workout.id)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every set from \(workout.name) will be removed. Records and charts recompute without it.")
+        }
     }
 
     private func summaryTile(_ value: String, _ label: String) -> some View {

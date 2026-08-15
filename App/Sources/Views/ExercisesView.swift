@@ -129,6 +129,12 @@ private struct ExerciseRow: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.inkSecondary)
                     .monospacedDigit()
+            } else if let bestReps = exercise.bestReps {
+                // Bodyweight movements: the rep record is the headline number.
+                Text("\(bestReps) reps")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .monospacedDigit()
             }
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))

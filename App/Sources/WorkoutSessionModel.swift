@@ -73,6 +73,30 @@ final class WorkoutSessionModel {
         return total
     }
 
+    /// Overall session intensity for the header ring: the mean of every
+    /// completed working set's ratio against its exercise's record (e1RM for
+    /// weighted work, reps for bodyweight). Red < 70% — coasting below your
+    /// records; yellow 70–90% — honest working weight; green ≥ 90% — pushing
+    /// at your limits; rainbow — at least one set beat a record this session.
+    /// Nil until a scoreable set is completed.
+    var sessionIntensity: Double? {
+        var ratios: [Double] = []
+        for exercise in exercises {
+            for set in exercise.sets where set.completed && !set.isWarmup {
+                if let e1RM = set.e1RM, let baseline = exercise.baselineE1RM, baseline > 0 {
+                    ratios.append(e1RM / baseline)
+                } else if set.weight == nil, let reps = set.reps,
+                          let baseline = exercise.baselineReps, baseline > 0 {
+                    ratios.append(Double(reps) / Double(baseline))
+                }
+            }
+        }
+        guard !ratios.isEmpty else { return nil }
+        let average = ratios.reduce(0, +) / Double(ratios.count)
+        // A PR set makes the whole session rainbow, whatever the average.
+        return ratios.contains { $0 >= 1 } ? Swift.max(average, 1) : average
+    }
+
     /// True when the session has sat idle long enough that the app should offer
     /// to finish or discard it instead of silently resuming (PRD auto-timeout).
     var isStale: Bool {
