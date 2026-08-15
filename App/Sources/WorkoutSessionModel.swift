@@ -73,16 +73,18 @@ final class WorkoutSessionModel {
         return total
     }
 
-    /// Overall session intensity for the header ring: the mean of every
-    /// completed working set's ratio against its exercise's record (e1RM for
-    /// weighted work, reps for bodyweight). Red < 70% — coasting below your
-    /// records; yellow 70–90% — honest working weight; green ≥ 90% — pushing
-    /// at your limits; rainbow — at least one set beat a record this session.
-    /// Nil until a scoreable set is completed.
+    /// Overall session intensity for the header ring: a live PROJECTION over
+    /// every working set as planned — the ring assumes the entered weights and
+    /// reps are what you'll lift, so it's colored from the first second and
+    /// moves up or down as numbers are edited. Each set scores against its
+    /// exercise's record (e1RM for weighted work, reps for bodyweight), and
+    /// the ring shows the mean: red < 70% — coasting below your records;
+    /// yellow 70–90% — honest working weight; green ≥ 90% — pushing at your
+    /// limits; rainbow — at least one planned set would beat a record.
     var sessionIntensity: Double? {
         var ratios: [Double] = []
         for exercise in exercises {
-            for set in exercise.sets where set.completed && !set.isWarmup {
+            for set in exercise.sets where !set.isWarmup {
                 if let e1RM = set.e1RM, let baseline = exercise.baselineE1RM, baseline > 0 {
                     ratios.append(e1RM / baseline)
                 } else if set.weight == nil, let reps = set.reps,
