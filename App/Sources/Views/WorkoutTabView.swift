@@ -114,7 +114,7 @@ struct WorkoutTabView: View {
         // session that silently loses everything logged into it.
         guard model.isReady else { return }
         session.start(template: template,
-                      name: template?.name ?? "Workout",
+                      name: template?.name ?? WorkoutNames.random(),
                       baselines: model.bestE1RMByExerciseId,
                       repBaselines: model.bestRepsByExerciseId,
                       exerciseNames: model.exerciseNames)

@@ -83,7 +83,7 @@ private struct MonthHeader: View {
         HStack(alignment: .firstTextBaseline) {
             Text(section.title).font(.footnote.weight(.semibold)).foregroundStyle(Theme.inkSecondary)
             Spacer()
-            Text("\(section.workoutCount) workouts · \(Format.duration(section.totalSeconds)) total")
+            Text("\(section.workoutCount) workouts")
                 .font(.caption)
                 .foregroundStyle(Theme.inkTertiary)
                 .monospacedDigit()
