@@ -25,13 +25,22 @@ targets:
       - package: FitnessKit
       - package: Supabase
         product: Supabase
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Light
+        # Registered CSV handler: Strong's "Export workouts" share sheet can
+        # send the file straight to this app (received via onOpenURL).
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Strong CSV Export
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.comma-separated-values-text
     settings:
       base:
-        GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.arshaanbhimani.fitnesstracker
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIUserInterfaceStyle: Light
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "6.0"
         CODE_SIGN_STYLE: Automatic

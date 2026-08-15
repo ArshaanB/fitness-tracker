@@ -5,6 +5,7 @@ struct FitnessTrackerApp: App {
     @State private var model = AppModel()
     @State private var session = WorkoutSessionModel()
     @State private var sync = SyncModel()
+    @State private var importResult: String?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -14,6 +15,17 @@ struct FitnessTrackerApp: App {
                 .environment(session)
                 .environment(sync)
                 .tint(Theme.accent)
+                // A CSV shared from Strong's export sheet lands here.
+                .onOpenURL { url in
+                    Task { importResult = await model.importStrongCSV(from: url) }
+                }
+                .alert("Strong Import", isPresented: .init(
+                    get: { importResult != nil },
+                    set: { if !$0 { importResult = nil } })) {
+                    Button("OK") { importResult = nil }
+                } message: {
+                    Text(importResult ?? "")
+                }
                 .task {
                     await model.bootstrap()
                     if let db = model.db {
