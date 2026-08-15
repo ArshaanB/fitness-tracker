@@ -123,7 +123,7 @@ private struct WorkoutCard: View {
                 if let duration = workout.durationSeconds {
                     StatText(value: Format.duration(duration), label: "duration")
                 }
-                StatText(value: Format.volume(workout.volume), label: "lbs")
+                StatText(value: Format.volume(workout.volume), label: Format.unitLabel)
             }
             .padding(.top, 10)
 

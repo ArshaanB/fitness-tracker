@@ -33,6 +33,15 @@ public enum SettingsStore {
             try settings.save(db)
         }
     }
+
+    /// Display unit only — stored weights are always pounds.
+    public static func setUnit(_ unit: String, in dbQueue: DatabaseQueue) throws {
+        try dbQueue.write { db in
+            var settings = try SettingsRecord.fetchOne(db, key: 1) ?? SettingsRecord()
+            settings.unit = unit
+            try settings.save(db)
+        }
+    }
 }
 
 public enum BodyWeightStore {

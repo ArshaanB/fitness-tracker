@@ -45,18 +45,52 @@ extension View {
     func cardStyle() -> some View { modifier(CardStyle()) }
 }
 
+/// Display unit for weights. Storage is ALWAYS pounds; conversion happens at
+/// the display/entry boundary only, so records, rings, and 8 years of history
+/// stay consistent whichever unit is shown.
+enum WeightUnit: String {
+    case lbs
+    case kg
+
+    var label: String { rawValue }
+
+    /// Stored pounds → display value.
+    func display(_ storedLbs: Double) -> Double {
+        self == .kg ? storedLbs * 0.45359237 : storedLbs
+    }
+
+    /// Entered display value → stored pounds.
+    func toStorage(_ displayValue: Double) -> Double {
+        self == .kg ? displayValue / 0.45359237 : displayValue
+    }
+}
+
+@MainActor
 enum Format {
+    /// Set by AppModel when settings load or change; every weight the user
+    /// sees flows through this.
+    static var unit: WeightUnit = .lbs
+
+    static var unitLabel: String { unit.label }
+
     static func duration(_ seconds: Int) -> String {
         let h = seconds / 3600, m = (seconds % 3600) / 60, s = seconds % 60
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 
-    static func volume(_ lbs: Double) -> String {
-        Int(lbs).formatted(.number.grouping(.automatic))
+    static func volume(_ storedLbs: Double) -> String {
+        Int(unit.display(storedLbs).rounded()).formatted(.number.grouping(.automatic))
     }
 
-    static func weight(_ w: Double) -> String {
-        w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w)
+    /// Converted display number, trimmed: "185", or "83.9" in kg.
+    static func weight(_ storedLbs: Double) -> String {
+        let value = (unit.display(storedLbs) * 10).rounded() / 10
+        return value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value)
+    }
+
+    /// Whole-number converted weight for stat-style values (e1RM).
+    static func wholeWeight(_ storedLbs: Double) -> String {
+        String(Int(unit.display(storedLbs).rounded()))
     }
 
     static func set(_ set: LoadedSet) -> String {

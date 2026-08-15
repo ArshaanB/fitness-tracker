@@ -89,7 +89,7 @@ struct ProfileView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Body weight").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink)
                 if let last = model.bodyWeights.last {
-                    Text("\(Format.weight(last.weight)) lbs")
+                    Text("\(Format.weight(last.weight)) \(Format.unitLabel)")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
@@ -230,7 +230,14 @@ struct ProfileView: View {
             HStack {
                 Text("Units").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
                 Spacer()
-                Text("lbs").font(.subheadline).foregroundStyle(Theme.inkTertiary)
+                Menu {
+                    Button("lbs (pounds)") { model.setUnit(.lbs) }
+                    Button("kg (kilograms)") { model.setUnit(.kg) }
+                } label: {
+                    Text(model.unit.label)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                }
             }
             .padding(14)
         }
@@ -355,7 +362,7 @@ struct BodyWeightChart: View {
     }
 
     private func yDomain(of visible: [BodyWeightRecord]) -> ClosedRange<Double> {
-        let values = visible.map(\.weight)
+        let values = visible.map { Format.unit.display($0.weight) }
         guard let min = values.min(), let max = values.max() else { return 0...1 }
         let pad = Swift.max((max - min) * 0.2, 2)
         return (min - pad)...(max + pad)
@@ -383,11 +390,11 @@ struct BodyWeightChart: View {
             ForEach(visibleWeights, id: \.id) { entry in
                 AreaMark(x: .value("Date", entry.measuredAt),
                          yStart: .value("Base", yDomain.lowerBound),
-                         yEnd: .value("Weight", entry.weight))
+                         yEnd: .value("Weight", Format.unit.display(entry.weight)))
                     .foregroundStyle(
                         LinearGradient(colors: [Theme.accent.opacity(0.16), Theme.accent.opacity(0.01)],
                                        startPoint: .top, endPoint: .bottom))
-                LineMark(x: .value("Date", entry.measuredAt), y: .value("Weight", entry.weight))
+                LineMark(x: .value("Date", entry.measuredAt), y: .value("Weight", Format.unit.display(entry.weight)))
                     .foregroundStyle(Theme.accent)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             }
@@ -423,7 +430,7 @@ struct BodyWeightChart: View {
                                 }) else { return }
                                 scrubbedWeight = nearest
                                 if let px = proxy.position(forX: nearest.measuredAt),
-                                   let py = proxy.position(forY: nearest.weight) {
+                                   let py = proxy.position(forY: Format.unit.display(nearest.weight)) {
                                     crosshair = .init(x: plot.minX + px, y: plot.minY + py,
                                                       top: plot.minY, bottom: plot.maxY)
                                 }
@@ -464,7 +471,7 @@ struct BodyWeightChart: View {
             if let scrubbedWeight {
                 ScrubTooltip(
                     title: scrubbedWeight.measuredAt.formatted(.dateTime.month().day().year()),
-                    value: "\(Format.weight(scrubbedWeight.weight)) lbs")
+                    value: "\(Format.weight(scrubbedWeight.weight)) \(Format.unitLabel)")
                     .allowsHitTesting(false)
             }
         }
@@ -496,7 +503,7 @@ private struct LogWeightSheet: View {
                         .multilineTextAlignment(.center)
                         .monospacedDigit()
                         .focused($focused)
-                    Text("lbs").font(.subheadline).foregroundStyle(Theme.inkSecondary)
+                    Text(Format.unitLabel).font(.subheadline).foregroundStyle(Theme.inkSecondary)
 
                     if !model.bodyWeights.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
@@ -509,7 +516,7 @@ private struct LogWeightSheet: View {
                                 let recent = Array(model.bodyWeights.suffix(10).reversed())
                                 ForEach(Array(recent.enumerated()), id: \.element.id) { index, entry in
                                     HStack {
-                                        Text("\(Format.weight(entry.weight)) lbs")
+                                        Text("\(Format.weight(entry.weight)) \(Format.unitLabel)")
                                             .font(.subheadline.weight(.semibold))
                                             .foregroundStyle(Theme.ink)
                                             .monospacedDigit()
@@ -553,7 +560,7 @@ private struct LogWeightSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         if let weight = parsed, weight > 0 {
-                            model.logBodyWeight(weight)
+                            model.logBodyWeight(Format.unit.toStorage(weight))
                         }
                         dismiss()
                     }
@@ -572,7 +579,7 @@ private struct LogWeightSheet: View {
                 Button("Cancel", role: .cancel) { pendingDelete = nil }
             } message: {
                 if let entry = pendingDelete {
-                    Text("\(Format.weight(entry.weight)) lbs, logged \(entry.measuredAt.formatted(.dateTime.month().day().year())).")
+                    Text("\(Format.weight(entry.weight)) \(Format.unitLabel), logged \(entry.measuredAt.formatted(.dateTime.month().day().year())).")
                 }
             }
             .onAppear { focused = true }

@@ -36,8 +36,8 @@ struct ExerciseDetailView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     if let best = exercise.bestE1RM {
-                        (Text("\(Int(best)) ").font(.title.weight(.bold))
-                            + Text("lbs").font(.subheadline.weight(.semibold))
+                        (Text("\(Format.wholeWeight(best)) ").font(.title.weight(.bold))
+                            + Text(Format.unitLabel).font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.inkSecondary))
                             .foregroundStyle(Theme.ink)
                         Text("Best est. 1RM").font(.caption).foregroundStyle(Theme.inkSecondary)
@@ -69,7 +69,7 @@ struct ExerciseDetailView: View {
                         $0.formatted(.relative(presentation: .named))
                     } ?? "Never", "Last done")
                 } else {
-                    recordTile(exercise.heaviestWeight.map { "\(Format.weight($0)) lbs" } ?? "None yet",
+                    recordTile(exercise.heaviestWeight.map { "\(Format.weight($0)) \(Format.unitLabel)" } ?? "None yet",
                                "Heaviest weight")
                     recordTile(exercise.bestSet.map { "\(Format.weight($0.weight)) × \($0.reps)" } ?? "None yet",
                                "Best set")
@@ -109,7 +109,7 @@ private struct SessionRow: View {
             }
             Spacer()
             if let e1RM = session.bestE1RM {
-                Text("\(Int(e1RM)) e1RM")
+                Text("\(Format.wholeWeight(e1RM)) e1RM")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.inkSecondary)
                     .monospacedDigit()

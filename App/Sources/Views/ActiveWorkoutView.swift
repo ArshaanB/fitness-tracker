@@ -284,7 +284,7 @@ private struct SetColumnHeaders: View {
         HStack(spacing: 6) {
             Text("SET").frame(width: 30)
             Text("PREVIOUS").frame(maxWidth: .infinity, alignment: .leading)
-            Text("LBS").frame(width: 74)
+            Text(Format.unitLabel.uppercased()).frame(width: 74)
             Text("REPS").frame(width: 56)
             Color.clear.frame(width: 28)
             Color.clear.frame(width: 44)
@@ -333,10 +333,11 @@ private struct SetRow: View {
                 .background(set.completed ? .clear : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
                             in: RoundedRectangle(cornerRadius: 9))
                 .frame(width: 74)
-                .accessibilityLabel("Weight in pounds")
+                .accessibilityLabel("Weight in \(Format.unitLabel)")
                 .onChange(of: weightText) { _, text in
                     session.updateSet(exerciseId: exercise.id, setId: set.id,
-                                      weight: Self.parseWeight(text), reps: set.reps)
+                                      weight: Self.parseWeight(text).map { Format.unit.toStorage($0) },
+                                      reps: set.reps)
                 }
 
             TextField("", text: $repsText)
@@ -513,7 +514,7 @@ private struct FinishSheet: View {
 
                     HStack(spacing: 10) {
                         stat(Format.duration(summary.duration), "Duration")
-                        stat("\(Format.volume(summary.volume)) lbs", "Volume")
+                        stat("\(Format.volume(summary.volume)) \(Format.unitLabel)", "Volume")
                         stat("\(summary.sets)", "Sets")
                     }
 
@@ -536,14 +537,14 @@ private struct FinishSheet: View {
                                         Text(pr.name)
                                             .font(.subheadline.weight(.semibold))
                                             .foregroundStyle(Theme.ink)
-                                        Text("est. 1RM \(Int(pr.e1RM)) lbs")
+                                        Text("est. 1RM \(Format.wholeWeight(pr.e1RM)) \(Format.unitLabel)")
                                             .font(.caption)
                                             .foregroundStyle(Theme.inkSecondary)
                                             .monospacedDigit()
                                     }
                                     Spacer()
                                     if let previous = pr.previousBest {
-                                        Text("+\(Int(pr.e1RM - previous)) lbs")
+                                        Text("+\(Format.wholeWeight(pr.e1RM - previous)) \(Format.unitLabel)")
                                             .font(.subheadline.weight(.bold))
                                             .foregroundStyle(Theme.ringHigh)
                                             .monospacedDigit()

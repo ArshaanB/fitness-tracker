@@ -125,7 +125,7 @@ private struct ExerciseRow: View {
             }
             Spacer()
             if let best = exercise.bestE1RM {
-                Text("\(Int(best)) e1RM")
+                Text("\(Format.wholeWeight(best)) e1RM")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.inkSecondary)
                     .monospacedDigit()

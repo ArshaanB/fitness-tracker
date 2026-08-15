@@ -27,7 +27,7 @@ struct WorkoutDetailView: View {
                     if let duration = workout.durationSeconds {
                         summaryTile(Format.duration(duration), "Duration")
                     }
-                    summaryTile(Format.volume(workout.volume), "Volume (lbs)")
+                    summaryTile(Format.volume(workout.volume), "Volume (\(Format.unitLabel))")
                     summaryTile("\(workout.exercises.reduce(0) { $0 + $1.sets.count })", "Sets")
                 }
 

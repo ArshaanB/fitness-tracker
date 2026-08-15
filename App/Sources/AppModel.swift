@@ -37,6 +37,7 @@ final class AppModel {
     private(set) var workoutsAscending: [LoadedWorkout] = []
     private(set) var workoutsById: [String: LoadedWorkout] = [:]
     private(set) var weeklyGoal = 3
+    private(set) var unit: WeightUnit = .lbs
     private(set) var bodyWeights: [BodyWeightRecord] = []
     // Weekly consistency stats, computed once per reload instead of per render
     // (they walk all 736 workouts through Calendar math).
@@ -82,6 +83,8 @@ final class AppModel {
         workoutsAscending = result.workoutsAscending
         workoutsById = Dictionary(uniqueKeysWithValues: result.workoutsAscending.map { ($0.id, $0) })
         weeklyGoal = result.weeklyGoal
+        unit = WeightUnit(rawValue: result.unit) ?? .lbs
+        Format.unit = unit
         bodyWeights = result.bodyWeights
         weekBuckets = WeeklyStats.weekBuckets(workoutsAscending: result.workoutsAscending, weeks: 12)
         currentStreak = WeeklyStats.currentStreak(workoutsAscending: result.workoutsAscending,
@@ -95,6 +98,13 @@ final class AppModel {
         try? SettingsStore.setWeeklyGoal(goal, in: db)
         weeklyGoal = max(1, min(goal, 7))
         currentStreak = WeeklyStats.currentStreak(workoutsAscending: workoutsAscending, goal: weeklyGoal)
+    }
+
+    func setUnit(_ newUnit: WeightUnit) {
+        guard let db else { return }
+        try? SettingsStore.setUnit(newUnit.rawValue, in: db)
+        unit = newUnit
+        Format.unit = newUnit
     }
 
     func logBodyWeight(_ weight: Double) {
@@ -176,6 +186,7 @@ final class AppModel {
         let templates: [TemplateSummary]
         let workoutsAscending: [LoadedWorkout]
         let weeklyGoal: Int
+        let unit: String
         let bodyWeights: [BodyWeightRecord]
     }
 
@@ -236,12 +247,14 @@ final class AppModel {
         }
         flushMonth()
 
+        let settings = try SettingsStore.load(from: db)
         return Loaded(sections: sections, prCounts: prCounts,
                       exercises: histories, bestE1RM: bestE1RM, bestReps: bestReps,
                       exerciseNames: exerciseNames, lastRest: lastRest,
                       templates: try TemplateStore.loadAll(from: db),
                       workoutsAscending: workouts,
-                      weeklyGoal: (try SettingsStore.load(from: db)).weeklyGoal,
+                      weeklyGoal: settings.weeklyGoal,
+                      unit: settings.unit,
                       bodyWeights: try BodyWeightStore.all(from: db))
     }
 }

@@ -51,9 +51,11 @@ struct ExerciseChartCard: View {
 
     private var chartPoints: [ChartPoint] {
         exercise.sessions.compactMap { session in
+            // Weight-based values convert to the display unit here, so the
+            // axis, line, and tooltips all speak the user's unit.
             let value: Double? = switch metric {
-            case .e1rm: session.bestE1RM
-            case .volume: session.volume > 0 ? session.volume : nil
+            case .e1rm: session.bestE1RM.map { Format.unit.display($0) }
+            case .volume: session.volume > 0 ? Format.unit.display(session.volume) : nil
             case .reps: session.bestReps.map(Double.init)
             }
             return value.map { ChartPoint(id: session.id, date: session.date, value: $0) }
@@ -78,9 +80,11 @@ struct ExerciseChartCard: View {
     }
 
     private func format(_ value: Double) -> String {
+        // Values arrive already converted to the display unit.
         switch metric {
-        case .e1rm: "\(Int(value)) lbs"
-        case .volume: value >= 10_000 ? String(format: "%.1fk lbs", value / 1000) : "\(Int(value)) lbs"
+        case .e1rm: "\(Int(value)) \(Format.unitLabel)"
+        case .volume: value >= 10_000 ? String(format: "%.1fk \(Format.unitLabel)", value / 1000)
+                                      : "\(Int(value)) \(Format.unitLabel)"
         case .reps: "\(Int(value)) reps"
         }
     }
