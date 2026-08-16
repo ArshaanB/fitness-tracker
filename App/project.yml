@@ -25,6 +25,12 @@ targets:
       - package: FitnessKit
       - package: Supabase
         product: Supabase
+    entitlements:
+      path: FitnessTracker.entitlements
+      properties:
+        # Rest-timer notifications break through Focus/DND (the alert is
+        # useless delivered silently to Notification Center mid-workout).
+        com.apple.developer.usernotifications.time-sensitive: true
     info:
       path: Info.plist
       properties:

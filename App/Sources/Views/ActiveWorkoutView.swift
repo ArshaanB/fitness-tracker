@@ -12,6 +12,7 @@ struct ActiveWorkoutView: View {
     @State private var showDiscardConfirm = false
     @State private var showStalePrompt = false
     @State private var historyExercise: ExerciseHistory?
+    @State private var draggingExerciseId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +24,14 @@ struct ActiveWorkoutView: View {
                         ExerciseSessionCard(exercise: exercise) {
                             historyExercise = model.exercises.first { $0.id == exercise.exerciseId }
                         }
+                        .onDrag {
+                            draggingExerciseId = exercise.id
+                            return NSItemProvider(object: exercise.id as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: ExerciseDropDelegate(
+                            targetId: exercise.id, dragging: $draggingExerciseId,
+                            session: session))
+                        .opacity(draggingExerciseId == exercise.id ? 0.55 : 1)
                     }
                     Button("+ Add exercise") { showPicker = true }
                         .font(.subheadline.weight(.semibold))
@@ -32,6 +41,15 @@ struct ActiveWorkoutView: View {
                 .padding(.horizontal, 14)
                 .padding(.top, 6)
                 .padding(.bottom, 120)
+            }
+            // Mid-gym one-handed use: drag the sheet down to tuck the keyboard
+            // away instead of hunting for a lone tappable gap.
+            .scrollDismissesKeyboard(.interactively)
+            // Catch-all for drags released between cards: reordering already
+            // persisted on hover, this just clears the dimmed dragged card.
+            .onDrop(of: [.text], isTargeted: nil) { _ in
+                draggingExerciseId = nil
+                return true
             }
         }
         .appBackground()
@@ -59,13 +77,15 @@ struct ActiveWorkoutView: View {
             }
         }
         .sheet(isPresented: $showPicker) {
-            ExercisePickerView { exercise in
-                session.addExercise(exerciseId: exercise.id,
-                                    name: exercise.name,
-                                    restSeconds: model.lastRestByExerciseId[exercise.id],
-                                    baseline: model.bestE1RMByExerciseId[exercise.id],
-                                    repBaseline: model.bestRepsByExerciseId[exercise.id],
-                                    previous: model.previousWorkingSets(exerciseId: exercise.id))
+            ExercisePickerView { picked in
+                for exercise in picked {
+                    session.addExercise(exerciseId: exercise.id,
+                                        name: exercise.name,
+                                        restSeconds: model.lastRestByExerciseId[exercise.id],
+                                        baseline: model.bestE1RMByExerciseId[exercise.id],
+                                        repBaseline: model.bestRepsByExerciseId[exercise.id],
+                                        previous: model.previousWorkingSets(exerciseId: exercise.id))
+                }
             }
         }
         .alert("Discard this workout?", isPresented: $showDiscardConfirm) {
@@ -127,7 +147,8 @@ struct ActiveWorkoutView: View {
                 ElapsedChip(since: session.startedAt)
             }
             Spacer()
-            IntensityRing(ratio: session.sessionIntensity, size: 34)
+            IntensityRing(ratio: session.sessionIntensity, size: 34,
+                          isRecord: session.sessionHasPR)
                 .padding(.trailing, 6)
             Button {
                 showOptions = true
@@ -208,6 +229,8 @@ private struct ExerciseSessionCard: View {
     let exercise: WorkoutSessionModel.SessionExercise
     let onShowHistory: () -> Void
 
+    @State private var showRemoveConfirm = false
+
     private var expanded: Bool { session.expandedExerciseId == exercise.id }
 
     var body: some View {
@@ -224,6 +247,18 @@ private struct ExerciseSessionCard: View {
                         .monospacedDigit()
                 }
                 Spacer()
+                if expanded {
+                    Button {
+                        showRemoveConfirm = true
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .frame(width: 30, height: 30)
+                            .background(Theme.inkTertiary.opacity(0.12), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
                 Button(action: onShowHistory) {
                     Image(systemName: "chart.xyaxis.line")
                         .font(.footnote.weight(.semibold))
@@ -246,8 +281,19 @@ private struct ExerciseSessionCard: View {
             }
             .contextMenu {
                 Button("Remove exercise", role: .destructive) {
-                    session.removeExercise(exerciseId: exercise.id)
+                    showRemoveConfirm = true
                 }
+            }
+            .confirmationDialog("Remove \(exercise.name)?",
+                                isPresented: $showRemoveConfirm, titleVisibility: .visible) {
+                Button("Remove Exercise", role: .destructive) {
+                    withAnimation(.spring(duration: 0.3)) {
+                        session.removeExercise(exerciseId: exercise.id)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Its sets are removed from this workout only. Past workouts are untouched.")
             }
 
             if expanded {
@@ -335,6 +381,10 @@ private struct SetRow: View {
                 .frame(width: 74)
                 .accessibilityLabel("Weight in \(Format.unitLabel)")
                 .onChange(of: weightText) { _, text in
+                    // Format.weight rounds display to 0.1, so parsing it back
+                    // shifts the stored value slightly; skip when the text is
+                    // just the stored weight re-formatted (the onAppear seed).
+                    if text == (set.weight.map { Format.weight($0) } ?? "") { return }
                     session.updateSet(exerciseId: exercise.id, setId: set.id,
                                       weight: Self.parseWeight(text).map { Format.unit.toStorage($0) },
                                       reps: set.reps)
@@ -355,7 +405,7 @@ private struct SetRow: View {
                                       weight: set.weight, reps: Int(text))
                 }
 
-            IntensityRing(ratio: ratio, size: 24)
+            IntensityRing(ratio: ratio, size: 24, isRecord: (ratio ?? 0) > 1)
                 .frame(width: 28)
 
             Button {
@@ -401,15 +451,30 @@ private struct SetRow: View {
     }
 
     private var ratio: Double? {
-        if let e1RM = set.e1RM, let baseline = exercise.baselineE1RM, baseline > 0 {
-            return e1RM / baseline
+        WorkoutSessionModel.setRatio(set, in: exercise)
+    }
+}
+
+/// Reorders exercises live as a dragged card passes over its siblings.
+private struct ExerciseDropDelegate: DropDelegate {
+    let targetId: String
+    @Binding var dragging: String?
+    let session: WorkoutSessionModel
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging else { return }
+        withAnimation(.spring(duration: 0.3)) {
+            session.reorderExercise(draggedId: dragging, over: targetId)
         }
-        // Bodyweight movements: score reps against the all-time rep record.
-        if exercise.baselineE1RM == nil, set.weight == nil,
-           let reps = set.reps, let baseline = exercise.baselineReps, baseline > 0 {
-            return Double(reps) / Double(baseline)
-        }
-        return nil
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }
 

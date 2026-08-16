@@ -114,11 +114,13 @@ private struct ExerciseCard: View {
     }
 
     private func ratio(for set: LoadedSet) -> Double? {
-        if let e1RM = set.e1RM, let bestE1RM, bestE1RM > 0 {
+        if let weight = set.weight, weight > 0,
+           let e1RM = set.e1RM, let bestE1RM, bestE1RM > 0 {
             return e1RM / bestE1RM
         }
-        // Bodyweight movements (Chin Up, Pull Up…): score reps vs rep record.
-        if set.weight == nil, let reps = set.reps, let bestReps, bestReps > 0 {
+        // Bodyweight sets — rep-only movements (Chin Up, Pull Up…) AND
+        // 0-weight sets of weighted exercises: score reps vs the rep record.
+        if (set.weight ?? 0) == 0, let reps = set.reps, let bestReps, bestReps > 0 {
             return Double(reps) / Double(bestReps)
         }
         return nil

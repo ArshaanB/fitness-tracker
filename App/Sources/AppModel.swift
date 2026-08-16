@@ -105,6 +105,9 @@ final class AppModel {
         try? SettingsStore.setUnit(newUnit.rawValue, in: db)
         unit = newUnit
         Format.unit = newUnit
+        // Format.unit is a plain static, invisible to Observation; views on
+        // other tabs keep stale labels until observed state changes.
+        refresh()
     }
 
     func logBodyWeight(_ weight: Double) {
@@ -199,8 +202,11 @@ final class AppModel {
         let bestE1RM = Dictionary(uniqueKeysWithValues: histories.compactMap { history in
             history.bestE1RM.map { (history.id, $0) }
         })
+        // Rep records for EVERY exercise, not just rep-only ones: a 0-weight
+        // (bodyweight) set of a normally-weighted exercise has e1RM 0, so its
+        // ring scores reps against this record instead of showing nothing.
         let bestReps = Dictionary(uniqueKeysWithValues: histories.compactMap { history in
-            history.isRepOnly ? history.bestReps.map { (history.id, $0) } : nil
+            history.bestReps.map { (history.id, $0) }
         })
 
         var exerciseNames: [String: String] = [:]

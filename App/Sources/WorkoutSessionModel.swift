@@ -73,30 +73,50 @@ final class WorkoutSessionModel {
         return total
     }
 
+    /// One set scored against its exercise's record: e1RM for weighted sets;
+    /// reps against the rep record for bodyweight sets (weight empty OR an
+    /// explicit 0 — "just the machine / just me" still deserves a color).
+    static func setRatio(_ set: SessionSet, in exercise: SessionExercise) -> Double? {
+        if let weight = set.weight, weight > 0 {
+            guard let e1RM = set.e1RM, let baseline = exercise.baselineE1RM,
+                  baseline > 0 else { return nil }
+            return e1RM / baseline
+        }
+        if let reps = set.reps, let baseline = exercise.baselineReps, baseline > 0 {
+            return Double(reps) / Double(baseline)
+        }
+        return nil
+    }
+
     /// Overall session intensity for the header ring: a live PROJECTION over
     /// every working set as planned — the ring assumes the entered weights and
     /// reps are what you'll lift, so it's colored from the first second and
-    /// moves up or down as numbers are edited. Each set scores against its
-    /// exercise's record (e1RM for weighted work, reps for bodyweight), and
-    /// the ring shows the mean: red < 70% — coasting below your records;
-    /// yellow 70–90% — honest working weight; green ≥ 90% — pushing at your
-    /// limits; rainbow — at least one planned set would beat a record.
+    /// moves up or down as numbers are edited. The ring shows the mean of the
+    /// per-set ratios: red < 70% — coasting below your records; yellow 70–90%
+    /// — honest working weight; green ≥ 90% — pushing at your limits.
     var sessionIntensity: Double? {
         var ratios: [Double] = []
         for exercise in exercises {
             for set in exercise.sets where !set.isWarmup {
-                if let e1RM = set.e1RM, let baseline = exercise.baselineE1RM, baseline > 0 {
-                    ratios.append(e1RM / baseline)
-                } else if set.weight == nil, let reps = set.reps,
-                          let baseline = exercise.baselineReps, baseline > 0 {
-                    ratios.append(Double(reps) / Double(baseline))
-                }
+                if let ratio = Self.setRatio(set, in: exercise) { ratios.append(ratio) }
             }
         }
         guard !ratios.isEmpty else { return nil }
-        let average = ratios.reduce(0, +) / Double(ratios.count)
-        // A PR set makes the whole session rainbow, whatever the average.
-        return ratios.contains { $0 >= 1 } ? Swift.max(average, 1) : average
+        return ratios.reduce(0, +) / Double(ratios.count)
+    }
+
+    /// True once a COMPLETED working set strictly beats its exercise's record.
+    /// Only this turns the session ring rainbow: never a tie (matching your
+    /// best is a full green ring), and never merely planned numbers — a PR
+    /// has to actually happen before the whole workout wears it.
+    var sessionHasPR: Bool {
+        exercises.contains { exercise in
+            exercise.sets.contains { set in
+                guard set.completed, !set.isWarmup,
+                      let ratio = Self.setRatio(set, in: exercise) else { return false }
+                return ratio > 1
+            }
+        }
     }
 
     /// True when the session has sat idle long enough that the app should offer
@@ -308,9 +328,35 @@ final class WorkoutSessionModel {
                                          restSeconds: restSeconds, previous: previous,
                                          sets: [], baselineE1RM: baseline,
                                          baselineReps: repBaseline))
+        // Prefill planned sets from the previous session, exactly like a
+        // template start: position-matched, extras copy the last previous set.
         let setCount = max(previous.count, 1)
-        for _ in 0..<setCount { addSet(exerciseId: item.id) }
+        let index = exercises.count - 1
+        for position in 1...setCount {
+            let prev = position <= previous.count ? previous[position - 1] : previous.last
+            let set = SessionSet(id: UUID().uuidString, position: position, isWarmup: false,
+                                 weight: prev?.weight, reps: prev?.reps, completedAt: nil)
+            exercises[index].sets.append(set)
+            persist(set, itemId: item.id)
+        }
         expandedExerciseId = item.id
+    }
+
+    /// Live reorder while a card is dragged over another; persists immediately
+    /// so the order survives however the drag ends.
+    func reorderExercise(draggedId: String, over targetId: String) {
+        guard draggedId != targetId,
+              let from = exercises.firstIndex(where: { $0.id == draggedId }),
+              let to = exercises.firstIndex(where: { $0.id == targetId }) else { return }
+        let moved = exercises.remove(at: from)
+        exercises.insert(moved, at: to)
+        guard let db else { return }
+        var changed: [(id: String, position: Int)] = []
+        for i in exercises.indices where exercises[i].position != i + 1 {
+            exercises[i].position = i + 1
+            changed.append((exercises[i].id, i + 1))
+        }
+        if !changed.isEmpty { try? SessionStore.updateItemPositions(changed, in: db) }
     }
 
     func removeExercise(exerciseId: String) {
@@ -385,6 +431,11 @@ final class WorkoutSessionModel {
         content.title = "Rest over"
         content.body = "Back to \(rest.exerciseName)"
         content.sound = .default
+        // Time-sensitive so the alert breaks through Focus/DND mid-workout —
+        // a silently-delivered rest timer defeats its purpose. Requires the
+        // matching entitlement (project.yml), and the user can still turn
+        // Time Sensitive delivery off per-Focus in Settings.
+        content.interruptionLevel = .timeSensitive
         let interval = max(rest.endDate.timeIntervalSinceNow, 1)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
         center.add(UNNotificationRequest(identifier: "rest", content: content, trigger: trigger))

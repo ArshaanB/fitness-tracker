@@ -169,6 +169,31 @@ private func insertSet(itemId: String, position: Int, isWarmup: Bool = false,
     }
 }
 
+@Suite struct ItemReorderTests {
+    @Test func updateItemPositionsPersistsNewOrder() throws {
+        let db = try AppDatabase.inMemory()
+        let workout = try insertWorkout(name: "Legs", startedAt: t0, finishedAt: nil, in: db)
+        let a = try insertItem(workoutId: workout, exerciseId: insertExercise("A", in: db),
+                               position: 1, in: db)
+        let b = try insertItem(workoutId: workout, exerciseId: insertExercise("B", in: db),
+                               position: 2, in: db)
+        let c = try insertItem(workoutId: workout, exerciseId: insertExercise("C", in: db),
+                               position: 3, in: db)
+
+        // C dragged to the top: c→1, a→2, b→3.
+        try SessionStore.updateItemPositions([(c, 1), (a, 2), (b, 3)], in: db)
+
+        let ordered = try db.read {
+            try WorkoutItemRecord
+                .filter(Column("workoutId") == workout)
+                .order(Column("position"))
+                .fetchAll($0)
+                .map(\.id)
+        }
+        #expect(ordered == [c, a, b])
+    }
+}
+
 @Suite struct WipeAllDataTests {
     @Test func wipeEmptiesEveryTableAndTheOutbox() throws {
         let db = try AppDatabase.inMemory()

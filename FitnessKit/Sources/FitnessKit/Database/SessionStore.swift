@@ -139,6 +139,17 @@ public enum SessionStore {
         _ = try dbQueue.write { try WorkoutItemRecord.deleteOne($0, key: id) }
     }
 
+    /// Persists a drag-reorder of a workout's exercises in one write.
+    public static func updateItemPositions(_ positions: [(id: String, position: Int)],
+                                           in dbQueue: DatabaseQueue) throws {
+        try dbQueue.write { db in
+            for (id, position) in positions {
+                try db.execute(sql: "UPDATE workoutItem SET position = ? WHERE id = ?",
+                               arguments: [position, id])
+            }
+        }
+    }
+
     /// Finishing deletes never-completed planned sets and exercises left with
     /// no sets, then stamps finishedAt.
     ///

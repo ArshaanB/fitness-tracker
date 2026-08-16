@@ -6,6 +6,9 @@ struct FitnessTrackerApp: App {
     @State private var session = WorkoutSessionModel()
     @State private var sync = SyncModel()
     @State private var importResult: String?
+    // A CSV opened at cold launch arrives before bootstrap has a database;
+    // the URL is only delivered once, so it must be held until then.
+    @State private var pendingImportURL: URL?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -17,7 +20,11 @@ struct FitnessTrackerApp: App {
                 .tint(Theme.accent)
                 // A CSV shared from Strong's export sheet lands here.
                 .onOpenURL { url in
-                    Task { importResult = await model.importStrongCSV(from: url) }
+                    if model.db != nil {
+                        Task { importResult = await model.importStrongCSV(from: url) }
+                    } else {
+                        pendingImportURL = url
+                    }
                 }
                 .alert("Strong Import", isPresented: .init(
                     get: { importResult != nil },
@@ -35,6 +42,10 @@ struct FitnessTrackerApp: App {
                                                exerciseNames: model.exerciseNames)
                         await sync.configure(db: db)
                         sync.pushSoon()
+                    }
+                    if let url = pendingImportURL {
+                        pendingImportURL = nil
+                        importResult = await model.importStrongCSV(from: url)
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in

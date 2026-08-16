@@ -115,12 +115,14 @@ struct TemplateEditorView: View {
                 }
             }
             .sheet(isPresented: $showPicker) {
-                ExercisePickerView { exercise in
-                    let previousCount = model.previousWorkingSets(exerciseId: exercise.id).count
-                    items.append(Draft(exerciseId: exercise.id,
-                                       name: exercise.name,
-                                       sets: previousCount > 0 ? previousCount : 3,
-                                       restSeconds: model.lastRestByExerciseId[exercise.id] ?? 90))
+                ExercisePickerView { picked in
+                    for exercise in picked {
+                        let previousCount = model.previousWorkingSets(exerciseId: exercise.id).count
+                        items.append(Draft(exerciseId: exercise.id,
+                                           name: exercise.name,
+                                           sets: previousCount > 0 ? previousCount : 3,
+                                           restSeconds: model.lastRestByExerciseId[exercise.id] ?? 90))
+                    }
                 }
             }
             .onAppear {
@@ -190,13 +192,17 @@ struct TemplateEditorView: View {
     }
 }
 
-/// Searchable exercise chooser used by the template editor and mid-workout add.
+/// Searchable exercise chooser used by the template editor and mid-workout
+/// add. Multi-select: tap rows to check any number of exercises, then commit
+/// them all with one Add.
 struct ExercisePickerView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
+    // Ordered: exercises are added in the order they were tapped.
+    @State private var selectedIds: [String] = []
 
-    let onPick: (ExerciseHistory) -> Void
+    let onPick: ([ExerciseHistory]) -> Void
 
     private var filtered: [ExerciseHistory] {
         guard !search.isEmpty else { return model.exercises }
@@ -206,26 +212,45 @@ struct ExercisePickerView: View {
     var body: some View {
         NavigationStack {
             List(filtered) { exercise in
+                let selected = selectedIds.contains(exercise.id)
                 Button {
-                    onPick(exercise)
-                    dismiss()
+                    if selected {
+                        selectedIds.removeAll { $0 == exercise.id }
+                    } else {
+                        selectedIds.append(exercise.id)
+                    }
                 } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(exercise.name)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.ink)
-                        Text("\(exercise.sessionCount) sessions")
-                            .font(.caption)
-                            .foregroundStyle(Theme.inkTertiary)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(exercise.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.ink)
+                            Text("\(exercise.sessionCount) sessions")
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                        Spacer()
+                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(selected ? Theme.accent : Theme.inkTertiary.opacity(0.4))
                     }
                 }
             }
             .searchable(text: $search, prompt: "Search exercises")
-            .navigationTitle("Add Exercise")
+            .navigationTitle("Add Exercises")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(selectedIds.count > 1 ? "Add \(selectedIds.count)" : "Add") {
+                        let byId = Dictionary(uniqueKeysWithValues: model.exercises.map { ($0.id, $0) })
+                        onPick(selectedIds.compactMap { byId[$0] })
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(selectedIds.isEmpty)
                 }
             }
         }
