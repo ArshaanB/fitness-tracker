@@ -3,10 +3,13 @@ import SwiftUI
 
 struct WorkoutDetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(WorkoutSessionModel.self) private var session
     @Environment(\.dismiss) private var dismiss
     let workout: LoadedWorkout
 
     @State private var showDeleteConfirm = false
+    @State private var showReplaceConfirm = false
+    @State private var showActive = false
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -46,6 +49,15 @@ struct WorkoutDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        if session.isActive {
+                            showReplaceConfirm = true
+                        } else {
+                            repeatWorkout()
+                        }
+                    } label: {
+                        Label("Repeat Workout", systemImage: "arrow.counterclockwise")
+                    }
                     Button(role: .destructive) {
                         showDeleteConfirm = true
                     } label: {
@@ -68,6 +80,26 @@ struct WorkoutDetailView: View {
         } message: {
             Text("Every set from \(workout.name) will be removed. Records and charts recompute without it.")
         }
+        .alert("A workout is already in progress.", isPresented: $showReplaceConfirm) {
+            Button("Discard It & Start", role: .destructive) { repeatWorkout() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Repeating \(workout.name) discards the workout you have running now.")
+        }
+        .fullScreenCover(isPresented: $showActive) {
+            ActiveWorkoutView()
+        }
+    }
+
+    /// Starts a new session mirroring this workout — same exercises and rest
+    /// times, sets prefilled with these lifts.
+    private func repeatWorkout() {
+        guard model.isReady else { return }
+        session.startRepeating(workout,
+                               baselines: model.bestE1RMByExerciseId,
+                               repBaselines: model.bestRepsByExerciseId,
+                               exerciseNames: model.exerciseNames)
+        showActive = true
     }
 
     private func summaryTile(_ value: String, _ label: String) -> some View {

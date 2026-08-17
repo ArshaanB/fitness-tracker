@@ -13,6 +13,7 @@ struct ProfileView: View {
 
     @State private var showAuth = false
     @State private var showImporter = false
+    @State private var showImportHelp = false
     @State private var importMessage: String?
     @State private var showWeightSheet = false
 
@@ -44,6 +45,9 @@ struct ProfileView: View {
             .sheet(isPresented: $showWeightSheet) {
                 LogWeightSheet(lastWeight: model.bodyWeights.last?.weight)
             }
+            .sheet(isPresented: $showImportHelp) {
+                ImportHelpSheet()
+            }
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
                 if case .success(let url) = result {
@@ -57,6 +61,15 @@ struct ProfileView: View {
             } message: {
                 Text(importMessage ?? "")
             }
+            #if DEBUG
+            // Screenshot hook: SIMCTL_CHILD_IMPORT_HELP=1 opens the walkthrough.
+            .task {
+                if ProcessInfo.processInfo.environment["IMPORT_HELP"] != nil {
+                    do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                    showImportHelp = true
+                }
+            }
+            #endif
         }
     }
 
@@ -207,25 +220,39 @@ struct ProfileView: View {
             }
             .padding(14)
             Divider().overlay(Theme.hairline).padding(.leading, 14)
-            Button {
-                showImporter = true
-            } label: {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Import from Strong").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
-                        Text("Only the CSV from Strong's \"Export workouts\" works here. Exports from other apps use different formats.")
-                            .font(.caption)
-                            .foregroundStyle(Theme.inkTertiary)
+            HStack(alignment: .top, spacing: 0) {
+                Button {
+                    showImporter = true
+                } label: {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Import from Strong").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
+                            Text("Only the CSV from Strong's \"Export workouts\" works here. Exports from other apps use different formats.")
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold)).foregroundStyle(Theme.inkTertiary)
+                            .padding(.top, 4)
                     }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold)).foregroundStyle(Theme.inkTertiary)
-                        .padding(.top, 4)
+                    .padding(14)
+                    .contentShape(Rectangle())
                 }
-                .padding(14)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                Button {
+                    showImportHelp = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 40, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 4)
+                .accessibilityLabel("How to export from Strong")
             }
-            .buttonStyle(.plain)
             Divider().overlay(Theme.hairline).padding(.leading, 14)
             HStack {
                 Text("Units").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
@@ -585,5 +612,165 @@ private struct LogWeightSheet: View {
             .onAppear { focused = true }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+// MARK: - Import help
+
+/// Three-step visual walkthrough for getting a Strong export into this app.
+/// The "screens" are stylized drawings, not Strong screenshots.
+private struct ImportHelpSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    step(1, "Export your data from Strong",
+                         "In Strong, open the profile tab, tap the gear for Settings, and choose \"Export Strong Data\". Strong builds a CSV file of your whole history.") {
+                        settingsIllustration
+                    }
+                    step(2, "Send the file to this app",
+                         "The share sheet opens. Pick Fitness Tracker in the app row — if you don't see it, tap the three dots (More) at the end of the row to find it.") {
+                        shareIllustration
+                    }
+                    step(3, "That's it — the import runs itself",
+                         "This app opens and pulls every workout in, then tells you how many arrived. Importing again later is safe: it only adds what's new. You can also save the CSV to Files and use the Import button instead.") {
+                        confirmIllustration
+                    }
+                }
+                .padding(16)
+            }
+            .appBackground()
+            .navigationTitle("Import from Strong")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }.fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private func step(_ number: Int, _ title: String, _ caption: String,
+                      @ViewBuilder illustration: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text("\(number)")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(Theme.accent, in: Circle())
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+            }
+            illustration()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color(red: 238 / 255, green: 242 / 255, blue: 249 / 255),
+                            in: RoundedRectangle(cornerRadius: 12))
+            Text(caption)
+                .font(.footnote)
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
+    }
+
+    /// Mini settings list with the export row highlighted.
+    private var settingsIllustration: some View {
+        VStack(spacing: 6) {
+            ForEach(0..<2, id: \.self) { _ in
+                HStack {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Theme.inkTertiary.opacity(0.25))
+                        .frame(width: 110, height: 8)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .background(.white, in: RoundedRectangle(cornerRadius: 8))
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                Text("Export Strong Data")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(.white, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Theme.accent, lineWidth: 1.5))
+        }
+        .padding(.horizontal, 24)
+    }
+
+    /// Mini share sheet: app icons row with the trailing "More" dots called out.
+    private var shareIllustration: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Theme.inkTertiary.opacity(0.3))
+                    .frame(width: 22, height: 26)
+                Text("strong_export.csv")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.inkSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            Divider().overlay(Theme.hairline)
+            HStack(spacing: 14) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Circle()
+                        .fill(Theme.inkTertiary.opacity(0.22))
+                        .frame(width: 34, height: 34)
+                }
+                VStack(spacing: 3) {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(.white, in: Circle())
+                        .overlay(Circle().strokeBorder(Theme.accent, lineWidth: 1.5))
+                    Text("More")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+        }
+        .padding(.vertical, 10)
+        .background(.white, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 24)
+    }
+
+    /// Mini confirmation alert.
+    private var confirmIllustration: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(Theme.ringHigh)
+            Text("Strong Import")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.ink)
+            Text("Imported 736 workouts")
+                .font(.caption2)
+                .foregroundStyle(Theme.inkSecondary)
+        }
+        .frame(width: 190)
+        .padding(.vertical, 14)
+        .background(.white, in: RoundedRectangle(cornerRadius: 12))
     }
 }

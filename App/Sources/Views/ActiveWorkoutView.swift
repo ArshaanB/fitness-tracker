@@ -148,7 +148,7 @@ struct ActiveWorkoutView: View {
             }
             Spacer()
             IntensityRing(ratio: session.sessionIntensity, size: 34,
-                          isRecord: session.sessionHasPR)
+                          isRecord: session.sessionIsRecord)
                 .padding(.trailing, 6)
             Button {
                 showOptions = true

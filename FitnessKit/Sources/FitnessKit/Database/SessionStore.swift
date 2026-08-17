@@ -100,6 +100,49 @@ public enum SessionStore {
         }
     }
 
+    /// Starts a workout that re-performs a past one: the same exercises in the
+    /// same order with the same rest times, and every planned set prefilled
+    /// with that workout's lifts (warm-ups included).
+    public static func start(repeating source: LoadedWorkout, name: String,
+                             at startedAt: Date = Date(),
+                             into dbQueue: DatabaseQueue) throws -> StartedWorkout {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM workout WHERE finishedAt IS NULL")
+
+            let workout = WorkoutRecord(templateId: nil, name: name, startedAt: startedAt)
+            try workout.insert(db)
+
+            var exercises: [StartedExercise] = []
+            for (index, exercise) in source.exercises.enumerated() {
+                let itemRecord = WorkoutItemRecord(workoutId: workout.id,
+                                                   exerciseId: exercise.exerciseId,
+                                                   position: index + 1,
+                                                   restSeconds: exercise.restSeconds)
+                try itemRecord.insert(db)
+
+                var sets: [WorkoutSetRecord] = []
+                for (setIndex, sourceSet) in exercise.sets.enumerated() {
+                    let set = WorkoutSetRecord(workoutItemId: itemRecord.id,
+                                               position: setIndex + 1,
+                                               isWarmup: sourceSet.isWarmup,
+                                               weight: sourceSet.weight,
+                                               reps: sourceSet.reps)
+                    try set.insert(db)
+                    sets.append(set)
+                }
+                if sets.isEmpty {
+                    let set = WorkoutSetRecord(workoutItemId: itemRecord.id, position: 1)
+                    try set.insert(db)
+                    sets.append(set)
+                }
+                exercises.append(StartedExercise(
+                    item: itemRecord, sets: sets,
+                    previous: try previousWorkingSets(exerciseId: exercise.exerciseId, in: db)))
+            }
+            return StartedWorkout(workout: workout, exercises: exercises)
+        }
+    }
+
     /// Loads an unfinished workout back into session shape (app relaunch).
     public static func resume(workoutId: String, from dbQueue: DatabaseQueue) throws -> StartedWorkout? {
         try dbQueue.read { db in

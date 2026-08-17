@@ -169,6 +169,32 @@ private func insertSet(itemId: String, position: Int, isWarmup: Bool = false,
     }
 }
 
+@Suite struct RepeatWorkoutTests {
+    @Test func startRepeatingCopiesExercisesAndLifts() throws {
+        let db = try AppDatabase.inMemory()
+        let bench = try insertExercise("Bench", in: db)
+        let past = try insertWorkout(name: "Push", startedAt: t0,
+                                     finishedAt: date(1_750_003_600), in: db)
+        let item = try insertItem(workoutId: past, exerciseId: bench, position: 1, in: db)
+        try insertSet(itemId: item, position: 1, isWarmup: true, weight: 95, reps: 8,
+                      completedAt: t0, in: db)
+        try insertSet(itemId: item, position: 2, weight: 185, reps: 5, completedAt: t0, in: db)
+
+        let loaded = try #require(try HistoryStore.loadAll(from: db).first { $0.id == past })
+        let started = try SessionStore.start(repeating: loaded, name: "Push", into: db)
+
+        #expect(started.exercises.count == 1)
+        let sets = started.exercises[0].sets
+        #expect(sets.map(\.weight) == [95, 185])
+        #expect(sets.map(\.reps) == [8, 5])
+        #expect(sets.map(\.isWarmup) == [true, false])
+        // Copied as PLANS: nothing is pre-completed.
+        #expect(sets.allSatisfy { $0.completedAt == nil })
+        // The source workout is untouched.
+        #expect(try db.read { try WorkoutRecord.fetchOne($0, key: past) } != nil)
+    }
+}
+
 @Suite struct ItemReorderTests {
     @Test func updateItemPositionsPersistsNewOrder() throws {
         let db = try AppDatabase.inMemory()

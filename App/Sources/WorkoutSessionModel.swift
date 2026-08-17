@@ -105,10 +105,8 @@ final class WorkoutSessionModel {
         return ratios.reduce(0, +) / Double(ratios.count)
     }
 
-    /// True once a COMPLETED working set strictly beats its exercise's record.
-    /// Only this turns the session ring rainbow: never a tie (matching your
-    /// best is a full green ring), and never merely planned numbers — a PR
-    /// has to actually happen before the whole workout wears it.
+    /// True once a COMPLETED working set strictly beats its exercise's record
+    /// — never a tie, never merely planned numbers.
     var sessionHasPR: Bool {
         exercises.contains { exercise in
             exercise.sets.contains { set in
@@ -117,6 +115,14 @@ final class WorkoutSessionModel {
                 return ratio > 1
             }
         }
+    }
+
+    /// The session ring wears rainbow only when a PR actually happened AND the
+    /// session as a whole is in the green zone. One PR inside an otherwise-red
+    /// workout stays a per-set celebration; the overall ring keeps telling the
+    /// honest average.
+    var sessionIsRecord: Bool {
+        sessionHasPR && (sessionIntensity ?? 0) >= 0.9
     }
 
     /// True when the session has sat idle long enough that the app should offer
@@ -145,6 +151,24 @@ final class WorkoutSessionModel {
                  exerciseNames: exerciseNames)
         } catch {
             assertionFailure("start failed: \(error)")
+        }
+    }
+
+    /// Re-performs a past workout: same exercises, sets prefilled with its
+    /// lifts. Any in-progress session is replaced (callers confirm first).
+    func startRepeating(_ workout: LoadedWorkout,
+                        baselines: [String: Double], repBaselines: [String: Int],
+                        exerciseNames: [String: String]) {
+        guard let db else { return }
+        pendingSaves.values.forEach { $0.cancel() }
+        pendingSaves = [:]
+        clearRest()
+        do {
+            let started = try SessionStore.start(repeating: workout, name: workout.name, into: db)
+            load(started, baselines: baselines, repBaselines: repBaselines,
+                 exerciseNames: exerciseNames)
+        } catch {
+            assertionFailure("start repeating failed: \(error)")
         }
     }
 
