@@ -3,7 +3,11 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(AppModel.self) private var model
+    @Environment(WorkoutSessionModel.self) private var session
     @State private var path = NavigationPath()
+    /// Workout awaiting "discard the running session?" confirmation.
+    @State private var pendingRepeat: LoadedWorkout?
+    @State private var showActive = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -33,11 +37,14 @@ struct HistoryView: View {
                             ForEach(model.monthSections) { section in
                                 MonthHeader(section: section)
                                 ForEach(section.workouts) { workout in
-                                    NavigationLink(value: workout.id) {
-                                        WorkoutCard(workout: workout,
-                                                    prCount: model.prCounts[workout.id] ?? 0)
+                                    // Tap gesture (not NavigationLink) so the
+                                    // repeat button inside the card wins taps.
+                                    WorkoutCard(workout: workout,
+                                                prCount: model.prCounts[workout.id] ?? 0) {
+                                        repeatTapped(workout)
                                     }
-                                    .buttonStyle(.plain)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { path.append(workout.id) }
                                 }
                             }
                         }
@@ -58,6 +65,20 @@ struct HistoryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .appBackground()
             .navigationTitle("History")
+            .alert("A workout is already in progress.", isPresented: .init(
+                get: { pendingRepeat != nil },
+                set: { if !$0 { pendingRepeat = nil } })) {
+                Button("Discard It & Start", role: .destructive) {
+                    if let workout = pendingRepeat { startRepeat(workout) }
+                    pendingRepeat = nil
+                }
+                Button("Cancel", role: .cancel) { pendingRepeat = nil }
+            } message: {
+                Text("Repeating \(pendingRepeat?.name ?? "this workout") discards the workout you have running now.")
+            }
+            .fullScreenCover(isPresented: $showActive) {
+                ActiveWorkoutView()
+            }
             #if DEBUG
             // Screenshot/dev hook: SIMCTL_CHILD_OPEN_WORKOUT=latest. Waits for
             // load + a settle beat; pushing during launch storms NavigationStack.
@@ -73,6 +94,25 @@ struct HistoryView: View {
             }
             #endif
         }
+    }
+
+    private func repeatTapped(_ workout: LoadedWorkout) {
+        if session.isActive {
+            pendingRepeat = workout
+        } else {
+            startRepeat(workout)
+        }
+    }
+
+    /// Starts a new session mirroring the workout — same exercises and rest
+    /// times, sets prefilled with its lifts.
+    private func startRepeat(_ workout: LoadedWorkout) {
+        guard model.isReady else { return }
+        session.startRepeating(workout,
+                               baselines: model.bestE1RMByExerciseId,
+                               repBaselines: model.bestRepsByExerciseId,
+                               exerciseNames: model.exerciseNames)
+        showActive = true
     }
 }
 
@@ -96,6 +136,7 @@ private struct MonthHeader: View {
 private struct WorkoutCard: View {
     let workout: LoadedWorkout
     let prCount: Int
+    let onRepeat: () -> Void
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -113,6 +154,15 @@ private struct WorkoutCard: View {
                 if prCount > 0 {
                     PRChip(count: prCount)
                 }
+                Button(action: onRepeat) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.accent.opacity(0.09), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Repeat \(workout.name)")
             }
             Text(Self.dateFormatter.string(from: workout.startedAt))
                 .font(.footnote)

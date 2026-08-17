@@ -251,13 +251,14 @@ private struct ExerciseSessionCard: View {
                     Button {
                         showRemoveConfirm = true
                     } label: {
-                        Image(systemName: "ellipsis")
+                        Image(systemName: "xmark")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(Theme.inkSecondary)
                             .frame(width: 30, height: 30)
                             .background(Theme.inkTertiary.opacity(0.12), in: Circle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Remove \(exercise.name) from workout")
                 }
                 Button(action: onShowHistory) {
                     Image(systemName: "chart.xyaxis.line")
