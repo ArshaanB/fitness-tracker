@@ -108,7 +108,7 @@ struct HistoryView: View {
     /// times, sets prefilled with its lifts.
     private func startRepeat(_ workout: LoadedWorkout) {
         guard model.isReady else { return }
-        session.startRepeating(workout,
+        session.startRepeating(workout, name: WorkoutNames.random(),
                                baselines: model.bestE1RMByExerciseId,
                                repBaselines: model.bestRepsByExerciseId,
                                exerciseNames: model.exerciseNames)

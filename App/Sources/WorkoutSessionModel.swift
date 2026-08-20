@@ -156,7 +156,8 @@ final class WorkoutSessionModel {
 
     /// Re-performs a past workout: same exercises, sets prefilled with its
     /// lifts. Any in-progress session is replaced (callers confirm first).
-    func startRepeating(_ workout: LoadedWorkout,
+    /// A repeat is a new day's work, so it gets a fresh name of its own.
+    func startRepeating(_ workout: LoadedWorkout, name: String,
                         baselines: [String: Double], repBaselines: [String: Int],
                         exerciseNames: [String: String]) {
         guard let db else { return }
@@ -164,7 +165,7 @@ final class WorkoutSessionModel {
         pendingSaves = [:]
         clearRest()
         do {
-            let started = try SessionStore.start(repeating: workout, name: workout.name, into: db)
+            let started = try SessionStore.start(repeating: workout, name: name, into: db)
             load(started, baselines: baselines, repBaselines: repBaselines,
                  exerciseNames: exerciseNames)
         } catch {
