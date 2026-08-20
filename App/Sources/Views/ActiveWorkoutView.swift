@@ -141,10 +141,25 @@ struct ActiveWorkoutView: View {
 
     private var header: some View {
         HStack(alignment: .center) {
+            Button {
+                session.isPresented = false
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(.white, in: Circle())
+                    .shadow(color: Color(red: 16 / 255, green: 38 / 255, blue: 74 / 255).opacity(0.08),
+                            radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Minimize workout")
             VStack(alignment: .leading, spacing: 4) {
                 Text(session.name)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Theme.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
                 ElapsedChip(since: session.startedAt)
             }
             Spacer()

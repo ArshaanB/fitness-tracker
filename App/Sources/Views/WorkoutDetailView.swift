@@ -9,7 +9,6 @@ struct WorkoutDetailView: View {
 
     @State private var showDeleteConfirm = false
     @State private var showReplaceConfirm = false
-    @State private var showActive = false
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -86,9 +85,6 @@ struct WorkoutDetailView: View {
         } message: {
             Text("Repeating \(workout.name) discards the workout you have running now.")
         }
-        .fullScreenCover(isPresented: $showActive) {
-            ActiveWorkoutView()
-        }
     }
 
     /// Starts a new session mirroring this workout — same exercises and rest
@@ -99,7 +95,7 @@ struct WorkoutDetailView: View {
                                baselines: model.bestE1RMByExerciseId,
                                repBaselines: model.bestRepsByExerciseId,
                                exerciseNames: model.exerciseNames)
-        showActive = true
+        session.isPresented = true
     }
 
     private func summaryTile(_ value: String, _ label: String) -> some View {

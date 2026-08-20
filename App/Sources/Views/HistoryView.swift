@@ -7,7 +7,6 @@ struct HistoryView: View {
     @State private var path = NavigationPath()
     /// Workout awaiting "discard the running session?" confirmation.
     @State private var pendingRepeat: LoadedWorkout?
-    @State private var showActive = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -76,9 +75,6 @@ struct HistoryView: View {
             } message: {
                 Text("Repeating \(pendingRepeat?.name ?? "this workout") discards the workout you have running now.")
             }
-            .fullScreenCover(isPresented: $showActive) {
-                ActiveWorkoutView()
-            }
             #if DEBUG
             // Screenshot/dev hook: SIMCTL_CHILD_OPEN_WORKOUT=latest. Waits for
             // load + a settle beat; pushing during launch storms NavigationStack.
@@ -112,7 +108,7 @@ struct HistoryView: View {
                                baselines: model.bestE1RMByExerciseId,
                                repBaselines: model.bestRepsByExerciseId,
                                exerciseNames: model.exerciseNames)
-        showActive = true
+        session.isPresented = true
     }
 }
 

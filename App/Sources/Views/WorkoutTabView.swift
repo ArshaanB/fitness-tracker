@@ -17,14 +17,13 @@ struct WorkoutTabView: View {
     }
 
     @State private var editorTarget: EditorTarget?
-    @State private var showActive = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     if session.isActive {
-                        ResumeCard { showActive = true }
+                        ResumeCard { session.isPresented = true }
                     }
 
                     ForEach(model.templates) { template in
@@ -67,9 +66,6 @@ struct WorkoutTabView: View {
             case .edit(let template): TemplateEditorView(existing: template)
             }
         }
-        .fullScreenCover(isPresented: $showActive) {
-            ActiveWorkoutView()
-        }
         #if DEBUG
         .task { await runScreenshotHooks() }
         #endif
@@ -104,7 +100,7 @@ struct WorkoutTabView: View {
                 session.toggleComplete(exerciseId: exercise.id, setId: set.id)
             }
         } else {
-            showActive = true
+            session.isPresented = true
         }
     }
     #endif
@@ -118,7 +114,7 @@ struct WorkoutTabView: View {
                       baselines: model.bestE1RMByExerciseId,
                       repBaselines: model.bestRepsByExerciseId,
                       exerciseNames: model.exerciseNames)
-        showActive = true
+        session.isPresented = true
     }
 
     private func lastDone(_ template: TemplateSummary) -> Date? {

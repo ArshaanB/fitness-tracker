@@ -66,6 +66,8 @@ struct RootTabView: View {
         case history, workout, exercises, profile
     }
 
+    @Environment(WorkoutSessionModel.self) private var session
+
     @State private var selection: Tab = {
         #if DEBUG
         // Screenshot/dev hook: SIMCTL_CHILD_UITAB=exercises simctl launch …
@@ -78,6 +80,7 @@ struct RootTabView: View {
     }()
 
     var body: some View {
+        @Bindable var session = session
         TabView(selection: $selection) {
             HistoryView()
                 .tabItem { Label("History", systemImage: "clock") }
@@ -92,6 +95,75 @@ struct RootTabView: View {
                 .tabItem { Label("Profile", systemImage: "person") }
                 .tag(Tab.profile)
         }
+        // The one full-screen workout cover for the whole app; every "open the
+        // workout" path just flips session.isPresented.
+        .fullScreenCover(isPresented: $session.isPresented) {
+            ActiveWorkoutView()
+        }
+        // Minimized live session: floating bar above the tab bar, on every tab.
+        .overlay(alignment: .bottom) {
+            if session.isActive && !session.isPresented {
+                MiniWorkoutBar { session.isPresented = true }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 56)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.35), value: session.isPresented)
+    }
+}
+
+/// Compact banner for a minimized workout: name, live clock, live rest
+/// countdown, and the session ring. Tap anywhere to reopen.
+struct MiniWorkoutBar: View {
+    @Environment(WorkoutSessionModel.self) private var session
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                IntensityRing(ratio: session.sessionIntensity, size: 24,
+                              isRecord: session.sessionIsRecord)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(session.name)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let elapsed = max(Int(context.date.timeIntervalSince(session.startedAt)), 0)
+                        Text("\(Format.duration(elapsed)) · \(session.completedSets) of \(session.totalSets) sets")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.75))
+                            .monospacedDigit()
+                    }
+                }
+                Spacer()
+                if let rest = session.rest {
+                    TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                        let remaining = max(0, Int(rest.endDate.timeIntervalSince(context.date).rounded()))
+                        HStack(spacing: 4) {
+                            Image(systemName: "timer")
+                            Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
+                                .monospacedDigit()
+                        }
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Theme.accent, in: Capsule())
+                    }
+                }
+                Image(systemName: "chevron.up")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: Theme.ink.opacity(0.35), radius: 12, y: 5)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Reopen workout \(session.name)")
     }
 }
 

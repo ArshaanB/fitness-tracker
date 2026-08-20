@@ -57,6 +57,10 @@ final class WorkoutSessionModel {
     var exercises: [SessionExercise] = []
     var expandedExerciseIds: Set<String> = []
     var rest: RestState?
+    /// Whether the full-screen workout UI is showing. False while a live
+    /// session is minimized to the floating bar so the rest of the app can be
+    /// browsed. RootTabView owns the single fullScreenCover driven by this.
+    var isPresented = false
 
     var isActive: Bool { workoutId != nil }
     var totalSets: Int { exercises.reduce(0) { $0 + $1.sets.count } }
