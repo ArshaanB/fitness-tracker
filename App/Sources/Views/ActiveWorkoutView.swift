@@ -9,6 +9,7 @@ struct ActiveWorkoutView: View {
     @State private var showFinish = false
     @State private var showPicker = false
     @State private var showOptions = false
+    @State private var showRestForAll = false
     @State private var showDiscardConfirm = false
     @State private var showStalePrompt = false
     @State private var historyExercise: ExerciseHistory?
@@ -165,8 +166,19 @@ struct ActiveWorkoutView: View {
             .padding(.trailing, 2)
             .confirmationDialog("Workout options", isPresented: $showOptions) {
                 Button("Add Exercise") { showPicker = true }
+                Button("Rest Timer for All Exercises…") { showRestForAll = true }
                 Button("Discard Workout", role: .destructive) { showDiscardConfirm = true }
                 Button("Cancel", role: .cancel) {}
+            }
+            .confirmationDialog("Rest timer for all exercises",
+                                isPresented: $showRestForAll, titleVisibility: .visible) {
+                Button("Off") { session.setRestForAll(seconds: nil) }
+                ForEach(RestMenu.options, id: \.self) { seconds in
+                    Button(RestMenu.label(seconds)) { session.setRestForAll(seconds: seconds) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Applies to every exercise here, and to ones you add later. You can still change any single exercise afterward.")
             }
             Button("Finish") { showFinish = true }
                 .font(.subheadline.weight(.semibold))
@@ -325,11 +337,18 @@ private struct ExerciseSessionCard: View {
                         SetRow(exercise: exercise, set: set,
                                previous: index < exercise.previous.count ? exercise.previous[index] : nil)
                     }
-                    Button("+ Add set") { session.addSet(exerciseId: exercise.id) }
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                        .padding(.top, 6)
-                        .padding(.bottom, 4)
+                    HStack {
+                        Button("+ Add set") { session.addSet(exerciseId: exercise.id) }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                        Spacer()
+                        RestMenu(current: exercise.restSeconds) { seconds in
+                            session.setRest(itemId: exercise.id, seconds: seconds)
+                        }
+                    }
+                    .padding(.top, 6)
+                    .padding(.bottom, 4)
+                    .padding(.horizontal, 4)
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
@@ -497,6 +516,50 @@ private struct ExerciseDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         dragging = nil
         return true
+    }
+}
+
+/// Rest-duration chooser used per-exercise; the workout-wide dialog shares
+/// its option list and labels.
+struct RestMenu: View {
+    static let options = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
+
+    static func label(_ seconds: Int?) -> String {
+        guard let seconds, seconds > 0 else { return "Off" }
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    let current: Int?
+    let onPick: (Int?) -> Void
+
+    var body: some View {
+        Menu {
+            button(nil)
+            ForEach(Self.options, id: \.self) { button($0) }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "timer")
+                Text("Rest \(Self.label(current))")
+                    .monospacedDigit()
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.inkSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Theme.inkTertiary.opacity(0.12), in: Capsule())
+        }
+    }
+
+    private func button(_ seconds: Int?) -> some View {
+        Button {
+            onPick(seconds)
+        } label: {
+            if current == seconds {
+                Label(Self.label(seconds), systemImage: "checkmark")
+            } else {
+                Text(Self.label(seconds))
+            }
+        }
     }
 }
 

@@ -253,6 +253,8 @@ final class WorkoutSessionModel {
         exercises = []
         expandedExerciseIds = []
         rest = nil
+        workoutDefaultRest = nil
+        hasWorkoutDefaultRest = false
     }
 
     // MARK: - Set mutations (write-through)
@@ -347,6 +349,8 @@ final class WorkoutSessionModel {
     func addExercise(exerciseId: String, name: String, restSeconds: Int?, baseline: Double?,
                      repBaseline: Int?, previous: [LoadedSet]) {
         guard let db, let workoutId else { return }
+        // A workout-wide rest default (if chosen) beats the exercise's usual rest.
+        let restSeconds = hasWorkoutDefaultRest ? workoutDefaultRest : restSeconds
         let position = (exercises.map(\.position).max() ?? 0) + 1
         let item = WorkoutItemRecord(workoutId: workoutId, exerciseId: exerciseId,
                                      position: position, restSeconds: restSeconds)
@@ -370,12 +374,36 @@ final class WorkoutSessionModel {
         expandedExerciseIds.insert(item.id)
     }
 
+    // MARK: - Rest timer settings
+
+    /// Workout-wide rest default: applies to every current exercise and to
+    /// ones added later, until an exercise's own timer is changed. The flag
+    /// distinguishes "no default chosen" (use each exercise's usual rest)
+    /// from an explicit "Off".
+    private(set) var workoutDefaultRest: Int?
+    private var hasWorkoutDefaultRest = false
+
+    func setRest(itemId: String, seconds: Int?) {
+        guard let db, let index = exercises.firstIndex(where: { $0.id == itemId }) else { return }
+        exercises[index].restSeconds = seconds
+        try? SessionStore.updateItemRest(id: itemId, seconds: seconds, in: db)
+    }
+
+    func setRestForAll(seconds: Int?) {
+        workoutDefaultRest = seconds
+        hasWorkoutDefaultRest = true
+        for exercise in exercises {
+            setRest(itemId: exercise.id, seconds: seconds)
+        }
+    }
+
     /// Swaps an exercise for another in place: same slot in the workout, new
     /// exercise with planned sets prefilled from ITS previous session. Any
     /// sets logged under the old exercise are removed (callers confirm).
     func replaceExercise(itemId: String, exerciseId: String, name: String, restSeconds: Int?,
                          baseline: Double?, repBaseline: Int?, previous: [LoadedSet]) {
         guard let db, let index = exercises.firstIndex(where: { $0.id == itemId }) else { return }
+        let restSeconds = hasWorkoutDefaultRest ? workoutDefaultRest : restSeconds
         for set in exercises[index].sets {
             pendingSaves[set.id]?.cancel()
             pendingSaves[set.id] = nil

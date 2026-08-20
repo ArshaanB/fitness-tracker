@@ -182,6 +182,15 @@ public enum SessionStore {
         _ = try dbQueue.write { try WorkoutItemRecord.deleteOne($0, key: id) }
     }
 
+    /// Updates one exercise's rest timer (nil = off).
+    public static func updateItemRest(id: String, seconds: Int?,
+                                      in dbQueue: DatabaseQueue) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE workoutItem SET restSeconds = ? WHERE id = ?",
+                           arguments: [seconds, id])
+        }
+    }
+
     /// Swaps which exercise a workout item points at (mid-workout replace).
     public static func updateItemExercise(id: String, exerciseId: String, restSeconds: Int?,
                                           in dbQueue: DatabaseQueue) throws {
