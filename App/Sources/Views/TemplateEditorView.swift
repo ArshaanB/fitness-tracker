@@ -202,6 +202,9 @@ struct ExercisePickerView: View {
     // Ordered: exercises are added in the order they were tapped.
     @State private var selectedIds: [String] = []
 
+    /// Single-select (replace flows): tapping a row picks it immediately.
+    var singleSelect = false
+    var title = "Add Exercises"
     let onPick: ([ExerciseHistory]) -> Void
 
     private var filtered: [ExerciseHistory] {
@@ -214,7 +217,10 @@ struct ExercisePickerView: View {
             List(filtered) { exercise in
                 let selected = selectedIds.contains(exercise.id)
                 Button {
-                    if selected {
+                    if singleSelect {
+                        onPick([exercise])
+                        dismiss()
+                    } else if selected {
                         selectedIds.removeAll { $0 == exercise.id }
                     } else {
                         selectedIds.append(exercise.id)
@@ -230,27 +236,31 @@ struct ExercisePickerView: View {
                                 .foregroundStyle(Theme.inkTertiary)
                         }
                         Spacer()
-                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundStyle(selected ? Theme.accent : Theme.inkTertiary.opacity(0.4))
+                        if !singleSelect {
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(selected ? Theme.accent : Theme.inkTertiary.opacity(0.4))
+                        }
                     }
                 }
             }
             .searchable(text: $search, prompt: "Search exercises")
-            .navigationTitle("Add Exercises")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(selectedIds.count > 1 ? "Add \(selectedIds.count)" : "Add") {
-                        let byId = Dictionary(uniqueKeysWithValues: model.exercises.map { ($0.id, $0) })
-                        onPick(selectedIds.compactMap { byId[$0] })
-                        dismiss()
+                if !singleSelect {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(selectedIds.count > 1 ? "Add \(selectedIds.count)" : "Add") {
+                            let byId = Dictionary(uniqueKeysWithValues: model.exercises.map { ($0.id, $0) })
+                            onPick(selectedIds.compactMap { byId[$0] })
+                            dismiss()
+                        }
+                        .fontWeight(.semibold)
+                        .disabled(selectedIds.isEmpty)
                     }
-                    .fontWeight(.semibold)
-                    .disabled(selectedIds.isEmpty)
                 }
             }
         }

@@ -225,11 +225,13 @@ struct ElapsedChip: View {
 // MARK: - Exercise card
 
 private struct ExerciseSessionCard: View {
+    @Environment(AppModel.self) private var model
     @Environment(WorkoutSessionModel.self) private var session
     let exercise: WorkoutSessionModel.SessionExercise
     let onShowHistory: () -> Void
 
     @State private var showRemoveConfirm = false
+    @State private var showReplacePicker = false
 
     private var expanded: Bool { session.expandedExerciseIds.contains(exercise.id) }
 
@@ -289,8 +291,9 @@ private struct ExerciseSessionCard: View {
                     showRemoveConfirm = true
                 }
             }
-            .confirmationDialog("Remove \(exercise.name)?",
+            .confirmationDialog("\(exercise.name)",
                                 isPresented: $showRemoveConfirm, titleVisibility: .visible) {
+                Button("Replace Exercise…") { showReplacePicker = true }
                 Button("Remove Exercise", role: .destructive) {
                     withAnimation(.spring(duration: 0.3)) {
                         session.removeExercise(exerciseId: exercise.id)
@@ -298,7 +301,21 @@ private struct ExerciseSessionCard: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Its sets are removed from this workout only. Past workouts are untouched.")
+                Text("Either way, its sets leave this workout only. Past workouts are untouched.")
+            }
+            .sheet(isPresented: $showReplacePicker) {
+                ExercisePickerView(singleSelect: true, title: "Replace with…") { picked in
+                    guard let new = picked.first else { return }
+                    withAnimation(.spring(duration: 0.3)) {
+                        session.replaceExercise(itemId: exercise.id,
+                                                exerciseId: new.id,
+                                                name: new.name,
+                                                restSeconds: model.lastRestByExerciseId[new.id],
+                                                baseline: model.bestE1RMByExerciseId[new.id],
+                                                repBaseline: model.bestRepsByExerciseId[new.id],
+                                                previous: model.previousWorkingSets(exerciseId: new.id))
+                    }
+                }
             }
 
             if expanded {

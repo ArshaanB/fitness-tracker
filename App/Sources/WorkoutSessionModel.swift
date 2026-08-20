@@ -370,6 +370,35 @@ final class WorkoutSessionModel {
         expandedExerciseIds.insert(item.id)
     }
 
+    /// Swaps an exercise for another in place: same slot in the workout, new
+    /// exercise with planned sets prefilled from ITS previous session. Any
+    /// sets logged under the old exercise are removed (callers confirm).
+    func replaceExercise(itemId: String, exerciseId: String, name: String, restSeconds: Int?,
+                         baseline: Double?, repBaseline: Int?, previous: [LoadedSet]) {
+        guard let db, let index = exercises.firstIndex(where: { $0.id == itemId }) else { return }
+        for set in exercises[index].sets {
+            pendingSaves[set.id]?.cancel()
+            pendingSaves[set.id] = nil
+            try? SessionStore.deleteSet(id: set.id, in: db)
+        }
+        try? SessionStore.updateItemExercise(id: itemId, exerciseId: exerciseId,
+                                             restSeconds: restSeconds, in: db)
+        var sets: [SessionSet] = []
+        for position in 1...max(previous.count, 1) {
+            let prev = position <= previous.count ? previous[position - 1] : previous.last
+            let set = SessionSet(id: UUID().uuidString, position: position, isWarmup: false,
+                                 weight: prev?.weight, reps: prev?.reps, completedAt: nil)
+            sets.append(set)
+            persist(set, itemId: itemId)
+        }
+        exercises[index] = SessionExercise(id: itemId, exerciseId: exerciseId, name: name,
+                                           position: exercises[index].position,
+                                           restSeconds: restSeconds, previous: previous,
+                                           sets: sets, baselineE1RM: baseline,
+                                           baselineReps: repBaseline)
+        expandedExerciseIds.insert(itemId)
+    }
+
     /// Live reorder while a card is dragged over another; persists immediately
     /// so the order survives however the drag ends.
     func reorderExercise(draggedId: String, over targetId: String) {
