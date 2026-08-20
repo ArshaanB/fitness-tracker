@@ -55,7 +55,7 @@ final class WorkoutSessionModel {
     private(set) var name = ""
     private(set) var startedAt = Date()
     var exercises: [SessionExercise] = []
-    var expandedExerciseId: String?
+    var expandedExerciseIds: Set<String> = []
     var rest: RestState?
 
     var isActive: Bool { workoutId != nil }
@@ -208,8 +208,11 @@ final class WorkoutSessionModel {
                             baselineE1RM: baselines[exercise.item.exerciseId],
                             baselineReps: repBaselines[exercise.item.exerciseId])
         }
-        expandedExerciseId = exercises.first(where: { $0.completedCount < $0.sets.count })?.id
-            ?? exercises.first?.id
+        // Open on the first unfinished exercise; the user can expand more.
+        if let focus = exercises.first(where: { $0.completedCount < $0.sets.count })?.id
+            ?? exercises.first?.id {
+            expandedExerciseIds = [focus]
+        }
         restoreRestTimer()
     }
 
@@ -247,7 +250,7 @@ final class WorkoutSessionModel {
     private func reset() {
         workoutId = nil
         exercises = []
-        expandedExerciseId = nil
+        expandedExerciseIds = []
         rest = nil
     }
 
@@ -363,7 +366,7 @@ final class WorkoutSessionModel {
             exercises[index].sets.append(set)
             persist(set, itemId: item.id)
         }
-        expandedExerciseId = item.id
+        expandedExerciseIds.insert(item.id)
     }
 
     /// Live reorder while a card is dragged over another; persists immediately

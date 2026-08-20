@@ -231,7 +231,7 @@ private struct ExerciseSessionCard: View {
 
     @State private var showRemoveConfirm = false
 
-    private var expanded: Bool { session.expandedExerciseId == exercise.id }
+    private var expanded: Bool { session.expandedExerciseIds.contains(exercise.id) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -277,7 +277,11 @@ private struct ExerciseSessionCard: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.spring(duration: 0.3)) {
-                    session.expandedExerciseId = expanded ? nil : exercise.id
+                    if expanded {
+                        session.expandedExerciseIds.remove(exercise.id)
+                    } else {
+                        session.expandedExerciseIds.insert(exercise.id)
+                    }
                 }
             }
             .contextMenu {
