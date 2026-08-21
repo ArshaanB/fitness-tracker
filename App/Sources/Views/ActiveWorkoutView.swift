@@ -266,6 +266,7 @@ private struct ExerciseSessionCard: View {
     @State private var showRemoveConfirm = false
     @State private var showReplacePicker = false
     @State private var showRestPicker = false
+    @State private var pendingReplace = false
 
     private var expanded: Bool { session.expandedExerciseIds.contains(exercise.id) }
 
@@ -320,17 +321,21 @@ private struct ExerciseSessionCard: View {
                     }
                 }
             }
-            .confirmationDialog("\(exercise.name)",
-                                isPresented: $showRemoveConfirm, titleVisibility: .visible) {
-                Button("Replace Exercise…") { showReplacePicker = true }
-                Button("Remove Exercise", role: .destructive) {
+            .sheet(isPresented: $showRemoveConfirm, onDismiss: {
+                // Present the picker only after the options sheet is fully
+                // gone; stacking the two mid-transition drops the second.
+                if pendingReplace {
+                    pendingReplace = false
+                    showReplacePicker = true
+                }
+            }) {
+                ExerciseOptionsSheet(name: exercise.name,
+                                     onReplace: { pendingReplace = true },
+                                     onRemove: {
                     withAnimation(.spring(duration: 0.3)) {
                         session.removeExercise(exerciseId: exercise.id)
                     }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Either way, its sets leave this workout only. Past workouts are untouched.")
+                })
             }
             .sheet(isPresented: $showReplacePicker) {
                 ExercisePickerView(singleSelect: true, title: "Replace with…") { picked in
@@ -567,6 +572,67 @@ private struct SetRow: View {
 
     private var ratio: Double? {
         WorkoutSessionModel.setRatio(set, in: exercise)
+    }
+}
+
+/// Full-width bottom sheet with the actions for one exercise card.
+private struct ExerciseOptionsSheet: View {
+    let name: String
+    let onReplace: () -> Void
+    let onRemove: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name)
+                    .font(.headline)
+                    .foregroundStyle(Theme.ink)
+                Text("Either way, its sets leave this workout only. Past workouts are untouched.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(spacing: 10) {
+                Button {
+                    onReplace()
+                    dismiss()
+                } label: {
+                    Label("Replace Exercise", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+                }
+                Button {
+                    onRemove()
+                    dismiss()
+                } label: {
+                    Label("Remove Exercise", systemImage: "trash")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.ringLow)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Theme.ringLow.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+                }
+            }
+            .buttonStyle(.plain)
+            Button {
+                dismiss()
+            } label: {
+                Text("Cancel")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .presentationDetents([.height(290)])
+        .presentationBackground(Color(red: 245 / 255, green: 247 / 255, blue: 251 / 255))
     }
 }
 
