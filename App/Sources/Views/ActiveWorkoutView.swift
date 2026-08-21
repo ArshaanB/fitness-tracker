@@ -194,15 +194,12 @@ struct ActiveWorkoutView: View {
                 Button("Discard Workout", role: .destructive) { showDiscardConfirm = true }
                 Button("Cancel", role: .cancel) {}
             }
-            .confirmationDialog("Rest timer for all exercises",
-                                isPresented: $showRestForAll, titleVisibility: .visible) {
-                Button("Off") { session.setRestForAll(seconds: nil) }
-                ForEach(RestMenu.options, id: \.self) { seconds in
-                    Button(RestMenu.label(seconds)) { session.setRestForAll(seconds: seconds) }
+            .sheet(isPresented: $showRestForAll) {
+                RestPickerSheet(title: "Rest for All Exercises",
+                                subtitle: "Applies to every exercise here, and to ones you add later. You can still change any single exercise afterward.",
+                                initial: session.workoutDefaultRest ?? session.exercises.first?.restSeconds) { seconds in
+                    session.setRestForAll(seconds: seconds)
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Applies to every exercise here, and to ones you add later. You can still change any single exercise afterward.")
             }
             Button("Finish") { showFinish = true }
                 .font(.subheadline.weight(.semibold))
@@ -268,6 +265,7 @@ private struct ExerciseSessionCard: View {
 
     @State private var showRemoveConfirm = false
     @State private var showReplacePicker = false
+    @State private var showRestPicker = false
 
     private var expanded: Bool { session.expandedExerciseIds.contains(exercise.id) }
 
@@ -366,8 +364,26 @@ private struct ExerciseSessionCard: View {
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(Theme.accent)
                         Spacer()
-                        RestMenu(current: exercise.restSeconds) { seconds in
-                            session.setRest(itemId: exercise.id, seconds: seconds)
+                        Button {
+                            showRestPicker = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "timer")
+                                Text("Rest \(RestPickerSheet.label(exercise.restSeconds))")
+                                    .monospacedDigit()
+                            }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Theme.inkTertiary.opacity(0.12), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .sheet(isPresented: $showRestPicker) {
+                            RestPickerSheet(title: "Rest Timer", subtitle: exercise.name,
+                                            initial: exercise.restSeconds) { seconds in
+                                session.setRest(itemId: exercise.id, seconds: seconds)
+                            }
                         }
                     }
                     .padding(.top, 6)
@@ -582,47 +598,76 @@ private struct ExerciseDropDelegate: DropDelegate {
     }
 }
 
-/// Rest-duration chooser used per-exercise; the workout-wide dialog shares
-/// its option list and labels.
-struct RestMenu: View {
-    static let options = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
+/// Apple-timer-style rest chooser: minute/second wheels in a compact sheet.
+/// Used per-exercise and for the workout-wide default.
+struct RestPickerSheet: View {
+    let title: String
+    let subtitle: String?
+    let initial: Int?
+    let onSet: (Int?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var minutes = 1
+    @State private var seconds = 30
 
     static func label(_ seconds: Int?) -> String {
         guard let seconds, seconds > 0 else { return "Off" }
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
-    let current: Int?
-    let onPick: (Int?) -> Void
-
     var body: some View {
-        Menu {
-            button(nil)
-            ForEach(Self.options, id: \.self) { button($0) }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "timer")
-                Text("Rest \(Self.label(current))")
-                    .monospacedDigit()
+        NavigationStack {
+            VStack(spacing: 4) {
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+                HStack(spacing: 0) {
+                    Picker("Minutes", selection: $minutes) {
+                        ForEach(0..<11, id: \.self) { Text("\($0) min").tag($0) }
+                    }
+                    .pickerStyle(.wheel)
+                    Picker("Seconds", selection: $seconds) {
+                        ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) {
+                            Text("\($0) sec").tag($0)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                }
+                .frame(height: 175)
+                Button("Turn Off Rest Timer") {
+                    onSet(nil)
+                    dismiss()
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.ringLow)
+                .padding(.bottom, 6)
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(Theme.inkSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Theme.inkTertiary.opacity(0.12), in: Capsule())
-        }
-    }
-
-    private func button(_ seconds: Int?) -> some View {
-        Button {
-            onPick(seconds)
-        } label: {
-            if current == seconds {
-                Label(Self.label(seconds), systemImage: "checkmark")
-            } else {
-                Text(Self.label(seconds))
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Set") {
+                        let total = minutes * 60 + seconds
+                        onSet(total == 0 ? nil : total)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .onAppear {
+                let start = initial ?? 90
+                minutes = min(start / 60, 10)
+                seconds = min((start % 60) / 5 * 5, 55)
             }
         }
+        .presentationDetents([.height(330)])
     }
 }
 
