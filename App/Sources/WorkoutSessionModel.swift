@@ -121,6 +121,20 @@ final class WorkoutSessionModel {
         }
     }
 
+    /// Intensity over COMPLETED working sets only — the finish sheet's score,
+    /// since uncompleted planned sets are discarded at finish and shouldn't
+    /// drag the number down.
+    var completedIntensity: Double? {
+        var ratios: [Double] = []
+        for exercise in exercises {
+            for set in exercise.sets where !set.isWarmup && set.completed {
+                if let ratio = Self.setRatio(set, in: exercise) { ratios.append(ratio) }
+            }
+        }
+        guard !ratios.isEmpty else { return nil }
+        return ratios.reduce(0, +) / Double(ratios.count)
+    }
+
     /// The session ring wears rainbow only when a PR actually happened AND the
     /// session as a whole is in the green zone. One PR inside an otherwise-red
     /// workout stays a per-set celebration; the overall ring keeps telling the

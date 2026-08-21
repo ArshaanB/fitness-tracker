@@ -822,13 +822,28 @@ private struct FinishSheet: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Workout complete")
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(Theme.ink)
-                        Text("\(session.name) · \(Date().formatted(.dateTime.weekday(.wide).month().day()))")
-                            .font(.footnote)
-                            .foregroundStyle(Theme.inkSecondary)
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Workout complete")
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(Theme.ink)
+                            Text("\(session.name) · \(Date().formatted(.dateTime.weekday(.wide).month().day()))")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        Spacer()
+                        // The workout's score: completed sets vs your records,
+                        // same colors as the live ring; rainbow means PR day.
+                        if let intensity = session.completedIntensity {
+                            VStack(spacing: 4) {
+                                IntensityRing(ratio: intensity, size: 52,
+                                              isRecord: session.sessionHasPR && intensity >= 0.9)
+                                Text("\(Int((intensity * 100).rounded()))%")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                    .monospacedDigit()
+                            }
+                        }
                     }
 
                     HStack(spacing: 10) {
