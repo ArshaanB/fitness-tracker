@@ -18,6 +18,15 @@ struct ActiveWorkoutView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+                // Dragging the top bar downward minimizes, same as the chevron.
+                .gesture(
+                    DragGesture(minimumDistance: 15)
+                        .onEnded { value in
+                            if value.translation.height > 50,
+                               value.translation.height > abs(value.translation.width) {
+                                session.isPresented = false
+                            }
+                        })
             progressBar
             ScrollView {
                 LazyVStack(spacing: 10) {
