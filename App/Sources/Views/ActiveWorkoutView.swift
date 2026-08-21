@@ -320,11 +320,6 @@ private struct ExerciseSessionCard: View {
                     }
                 }
             }
-            .contextMenu {
-                Button("Remove exercise", role: .destructive) {
-                    showRemoveConfirm = true
-                }
-            }
             .confirmationDialog("\(exercise.name)",
                                 isPresented: $showRemoveConfirm, titleVisibility: .visible) {
                 Button("Replace Exercise…") { showReplacePicker = true }
