@@ -14,17 +14,27 @@ struct ActiveWorkoutView: View {
     @State private var showStalePrompt = false
     @State private var historyExercise: ExerciseHistory?
     @State private var draggingExerciseId: String?
+    /// Live drag-to-minimize: the whole screen rides the finger.
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
             header
-                // Dragging the top bar downward minimizes, same as the chevron.
+                // Dragging the top bar downward minimizes, same as the chevron:
+                // the screen follows the finger and commits past the threshold.
                 .gesture(
-                    DragGesture(minimumDistance: 15)
+                    DragGesture(minimumDistance: 10)
+                        .onChanged { value in
+                            guard value.translation.height > 0,
+                                  value.translation.height > abs(value.translation.width)
+                            else { return }
+                            dragOffset = value.translation.height
+                        }
                         .onEnded { value in
-                            if value.translation.height > 50,
-                               value.translation.height > abs(value.translation.width) {
+                            if dragOffset > 130 || value.predictedEndTranslation.height > 350 {
                                 session.isPresented = false
+                            } else {
+                                withAnimation(.spring(duration: 0.35)) { dragOffset = 0 }
                             }
                         })
             progressBar
@@ -74,6 +84,7 @@ struct ActiveWorkoutView: View {
                     .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
+        .offset(y: dragOffset)
         .animation(.spring(duration: 0.35), value: session.rest?.endDate)
         .sheet(isPresented: $showFinish) { FinishSheet(dismissWorkout: { dismiss() }) }
         .sheet(item: $historyExercise) { exercise in
@@ -123,6 +134,8 @@ struct ActiveWorkoutView: View {
             }
         }
         .onAppear {
+            // Re-presenting after a drag-minimize must start back at the top.
+            dragOffset = 0
             // Ask once per session about staleness; "Keep going" shouldn't
             // re-prompt on every reopen.
             let dismissKey = "staleDismissed-\(session.workoutId ?? "")"
