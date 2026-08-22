@@ -444,43 +444,50 @@ private struct SetRow: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            if swipeOffset < 0 {
-                Button {
-                    withAnimation(.spring(duration: 0.3)) {
-                        session.deleteSet(exerciseId: exercise.id, setId: set.id)
-                    }
-                } label: {
-                    Image(systemName: "trash.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 64)
-                        .frame(maxHeight: .infinity)
-                        .background(Theme.ringLow, in: RoundedRectangle(cornerRadius: 10))
+            // Delete action sits behind the row and is progressively uncovered
+            // as the row slides; the container clips so nothing spills out of
+            // the card.
+            Button {
+                withAnimation(.spring(duration: 0.3)) {
+                    session.deleteSet(exerciseId: exercise.id, setId: set.id)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Delete set \(set.position)")
+            } label: {
+                Image(systemName: "trash.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 60)
+                    .frame(maxHeight: .infinity)
+                    .background(Theme.ringLow, in: RoundedRectangle(cornerRadius: 10))
             }
+            .buttonStyle(.plain)
+            .opacity(min(1, -swipeOffset / 50))
+            .accessibilityLabel("Delete set \(set.position)")
+
             rowContent
                 .offset(x: swipeOffset)
-                .gesture(
-                    DragGesture(minimumDistance: 20)
-                        .onChanged { value in
-                            // Horizontal-dominant drags only; leave scrolling alone.
-                            guard abs(value.translation.width) > abs(value.translation.height)
-                            else { return }
-                            let base = value.translation.width + (swipeOffset < 0 ? -72 : 0)
-                            swipeOffset = min(0, max(base, -110))
-                        }
-                        .onEnded { _ in
-                            withAnimation(.spring(duration: 0.25)) {
-                                swipeOffset = swipeOffset < -40 ? -72 : 0
-                            }
-                        })
-                .onTapGesture {
-                    if swipeOffset < 0 {
-                        withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
-                    }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 12)
+                .onChanged { value in
+                    // Horizontal-dominant drags only; leave scrolling alone.
+                    guard abs(value.translation.width) > abs(value.translation.height)
+                    else { return }
+                    let base = value.translation.width + (swipeOffset < 0 ? -68 : 0)
+                    // Rubber-band past the open position instead of hard-stopping.
+                    let raw = min(0, base)
+                    swipeOffset = raw < -68 ? -68 + (raw + 68) / 3 : raw
                 }
+                .onEnded { _ in
+                    withAnimation(.spring(duration: 0.28, bounce: 0.15)) {
+                        swipeOffset = swipeOffset < -34 ? -68 : 0
+                    }
+                })
+        .onTapGesture {
+            if swipeOffset < 0 {
+                withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
+            }
         }
     }
 
