@@ -288,14 +288,14 @@ private struct ExerciseSessionCard: View {
                     Button {
                         showRemoveConfirm = true
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: "ellipsis")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(Theme.inkSecondary)
                             .frame(width: 30, height: 30)
                             .background(Theme.inkTertiary.opacity(0.12), in: Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Remove \(exercise.name) from workout")
+                    .accessibilityLabel("Options for \(exercise.name)")
                 }
                 Button(action: onShowHistory) {
                     Image(systemName: "chart.xyaxis.line")
@@ -629,9 +629,10 @@ private struct ExerciseOptionsSheet: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(22)
+        .padding(.horizontal, 22)
+        .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(290)])
+        .presentationDetents([.height(252)])
         .presentationBackground(Color(red: 245 / 255, green: 247 / 255, blue: 251 / 255))
     }
 }
