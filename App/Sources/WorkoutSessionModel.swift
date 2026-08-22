@@ -16,6 +16,8 @@ final class WorkoutSessionModel {
         var weight: Double?
         var reps: Int?
         var completedAt: Date?
+        /// Per-set rest override; nil = the exercise's rest timer.
+        var restSeconds: Int?
         var completed: Bool { completedAt != nil }
 
         var e1RM: Double? {
@@ -222,7 +224,8 @@ final class WorkoutSessionModel {
                             previous: exercise.previous,
                             sets: exercise.sets.map {
                                 SessionSet(id: $0.id, position: $0.position, isWarmup: $0.isWarmup,
-                                           weight: $0.weight, reps: $0.reps, completedAt: $0.completedAt)
+                                           weight: $0.weight, reps: $0.reps, completedAt: $0.completedAt,
+                                           restSeconds: $0.restSeconds)
                             },
                             baselineE1RM: baselines[exercise.item.exerciseId],
                             baselineReps: repBaselines[exercise.item.exerciseId])
@@ -280,7 +283,7 @@ final class WorkoutSessionModel {
         try? SessionStore.upsertSet(
             WorkoutSetRecord(id: set.id, workoutItemId: itemId, position: set.position,
                              isWarmup: set.isWarmup, weight: set.weight, reps: set.reps,
-                             completedAt: set.completedAt),
+                             completedAt: set.completedAt, restSeconds: set.restSeconds),
             in: db)
     }
 
@@ -331,7 +334,7 @@ final class WorkoutSessionModel {
         pendingSaves[setId] = nil
         persist(exercises[e].sets[s], itemId: exerciseId)
         if !wasCompleted {
-            startRest(for: exercises[e])
+            startRest(for: exercises[e], after: exercises[e].sets[s])
         }
     }
 
@@ -343,7 +346,8 @@ final class WorkoutSessionModel {
                              isWarmup: warmup,
                              weight: last?.weight,
                              reps: last?.reps,
-                             completedAt: nil)
+                             completedAt: nil,
+                             restSeconds: last?.restSeconds)
         exercises[e].sets.append(set)
         persist(set, itemId: exerciseId)
     }
@@ -394,6 +398,14 @@ final class WorkoutSessionModel {
         guard let db, let index = exercises.firstIndex(where: { $0.id == itemId }) else { return }
         exercises[index].restSeconds = seconds
         try? SessionStore.updateItemRest(id: itemId, seconds: seconds, in: db)
+    }
+
+    /// Per-set override of the rest started when THIS set is checked off.
+    func setSetRest(exerciseId: String, setId: String, seconds: Int?) {
+        guard let e = exercises.firstIndex(where: { $0.id == exerciseId }),
+              let i = exercises[e].sets.firstIndex(where: { $0.id == setId }) else { return }
+        exercises[e].sets[i].restSeconds = seconds
+        persist(exercises[e].sets[i], itemId: exerciseId)
     }
 
     /// Swaps an exercise for another in place: same slot in the workout, new
@@ -450,8 +462,8 @@ final class WorkoutSessionModel {
 
     // MARK: - Rest timer
 
-    private func startRest(for exercise: SessionExercise) {
-        guard let seconds = exercise.restSeconds, seconds > 0 else { return }
+    private func startRest(for exercise: SessionExercise, after set: SessionSet) {
+        guard let seconds = set.restSeconds ?? exercise.restSeconds, seconds > 0 else { return }
         rest = RestState(exerciseName: exercise.name,
                          endDate: Date().addingTimeInterval(TimeInterval(seconds)),
                          totalSeconds: seconds)

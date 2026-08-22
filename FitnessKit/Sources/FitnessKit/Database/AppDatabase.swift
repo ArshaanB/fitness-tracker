@@ -108,6 +108,11 @@ public enum AppDatabase {
             }
         }
 
+        migrator.registerMigration("v3-set-rest") { db in
+            // Per-set rest override; nil = use the exercise's rest timer.
+            try db.execute(sql: "ALTER TABLE workoutSet ADD COLUMN restSeconds INTEGER")
+        }
+
         return migrator
     }
 

@@ -449,29 +449,48 @@ private struct SetRow: View {
     // editing; the model receives parsed values.
     @State private var weightText = ""
     @State private var repsText = ""
-    /// Swipe-to-delete: how far the row is dragged left; -72 is "open".
+    /// Swipe actions: how far the row is dragged left; -trayWidth is "open".
     @State private var swipeOffset: CGFloat = 0
+    @State private var showSetRest = false
+
+    /// Width of the revealed swipe-action tray (timer + delete).
+    private static let trayWidth: CGFloat = 128
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            // Delete action sits behind the row and is progressively uncovered
-            // as the row slides; the container clips so nothing spills out of
-            // the card.
-            Button {
-                withAnimation(.spring(duration: 0.3)) {
-                    session.deleteSet(exerciseId: exercise.id, setId: set.id)
+            // Actions sit behind the row and are progressively uncovered as
+            // it slides; the container clips so nothing spills out of the card.
+            HStack(spacing: 6) {
+                Button {
+                    withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
+                    showSetRest = true
+                } label: {
+                    Image(systemName: "timer")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 58)
+                        .frame(maxHeight: .infinity)
+                        .background(set.restSeconds != nil ? Theme.accent : Theme.inkSecondary,
+                                    in: RoundedRectangle(cornerRadius: 10))
                 }
-            } label: {
-                Image(systemName: "trash.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 60)
-                    .frame(maxHeight: .infinity)
-                    .background(Theme.ringLow, in: RoundedRectangle(cornerRadius: 10))
+                .buttonStyle(.plain)
+                .accessibilityLabel("Rest timer for set \(set.position)")
+                Button {
+                    withAnimation(.spring(duration: 0.3)) {
+                        session.deleteSet(exerciseId: exercise.id, setId: set.id)
+                    }
+                } label: {
+                    Image(systemName: "trash.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 58)
+                        .frame(maxHeight: .infinity)
+                        .background(Theme.ringLow, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Delete set \(set.position)")
             }
-            .buttonStyle(.plain)
             .opacity(min(1, -swipeOffset / 50))
-            .accessibilityLabel("Delete set \(set.position)")
 
             rowContent
                 .offset(x: swipeOffset)
@@ -484,19 +503,27 @@ private struct SetRow: View {
                     // Horizontal-dominant drags only; leave scrolling alone.
                     guard abs(value.translation.width) > abs(value.translation.height)
                     else { return }
-                    let base = value.translation.width + (swipeOffset < 0 ? -68 : 0)
+                    let open = Self.trayWidth
+                    let base = value.translation.width + (swipeOffset < 0 ? -open : 0)
                     // Rubber-band past the open position instead of hard-stopping.
                     let raw = min(0, base)
-                    swipeOffset = raw < -68 ? -68 + (raw + 68) / 3 : raw
+                    swipeOffset = raw < -open ? -open + (raw + open) / 3 : raw
                 }
                 .onEnded { _ in
                     withAnimation(.spring(duration: 0.28, bounce: 0.15)) {
-                        swipeOffset = swipeOffset < -34 ? -68 : 0
+                        swipeOffset = swipeOffset < -Self.trayWidth / 2 ? -Self.trayWidth : 0
                     }
                 })
         .onTapGesture {
             if swipeOffset < 0 {
                 withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
+            }
+        }
+        .sheet(isPresented: $showSetRest) {
+            RestPickerSheet(title: "Rest After Set \(set.position)",
+                            subtitle: "\(exercise.name) — overrides this exercise's rest for this set only.",
+                            initial: set.restSeconds ?? exercise.restSeconds) { seconds in
+                session.setSetRest(exerciseId: exercise.id, setId: set.id, seconds: seconds)
             }
         }
     }
@@ -508,6 +535,15 @@ private struct SetRow: View {
                 .foregroundStyle(set.isWarmup ? Theme.ringMid : Theme.inkSecondary)
                 .frame(width: 30)
                 .monospacedDigit()
+                // Tiny cue that this set carries its own rest timer.
+                .overlay(alignment: .topTrailing) {
+                    if set.restSeconds != nil {
+                        Image(systemName: "timer")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Theme.accent)
+                            .offset(x: 1, y: -1)
+                    }
+                }
 
             Text(previousText)
                 .font(.subheadline)

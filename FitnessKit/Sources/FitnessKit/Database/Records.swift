@@ -66,11 +66,13 @@ public struct WorkoutSetRecord: Codable, Sendable, FetchableRecord, PersistableR
     public var distance: Double?
     public var notes: String?
     public var completedAt: Date?
+    /// Per-set rest override; nil falls back to the exercise's rest timer.
+    public var restSeconds: Int?
 
     public init(id: String = UUID().uuidString, workoutItemId: String, position: Int,
                 isWarmup: Bool = false, weight: Double? = nil, reps: Int? = nil,
                 seconds: Double? = nil, distance: Double? = nil, notes: String? = nil,
-                completedAt: Date? = nil) {
+                completedAt: Date? = nil, restSeconds: Int? = nil) {
         self.id = id
         self.workoutItemId = workoutItemId
         self.position = position
@@ -81,6 +83,7 @@ public struct WorkoutSetRecord: Codable, Sendable, FetchableRecord, PersistableR
         self.distance = distance
         self.notes = notes
         self.completedAt = completedAt
+        self.restSeconds = restSeconds
     }
 }
 
