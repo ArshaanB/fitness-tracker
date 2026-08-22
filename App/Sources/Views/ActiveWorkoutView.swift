@@ -40,17 +40,27 @@ struct ActiveWorkoutView: View {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     ForEach(session.exercises) { exercise in
-                        ExerciseSessionCard(exercise: exercise) {
+                        // Reorder-drag only on COLLAPSED cards: onDrag's
+                        // long-press lift left expanded cards stuck in their
+                        // grey highlight, and reordering happens collapsed.
+                        let card = ExerciseSessionCard(exercise: exercise) {
                             historyExercise = model.exercises.first { $0.id == exercise.exerciseId }
-                        }
-                        .onDrag {
-                            draggingExerciseId = exercise.id
-                            return NSItemProvider(object: exercise.id as NSString)
                         }
                         .onDrop(of: [.text], delegate: ExerciseDropDelegate(
                             targetId: exercise.id, dragging: $draggingExerciseId,
                             session: session))
                         .opacity(draggingExerciseId == exercise.id ? 0.55 : 1)
+                        if session.expandedExerciseIds.contains(exercise.id) {
+                            card
+                        } else {
+                            card
+                                .contentShape(.dragPreview,
+                                              RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .onDrag {
+                                    draggingExerciseId = exercise.id
+                                    return NSItemProvider(object: exercise.id as NSString)
+                                }
+                        }
                     }
                     Button("+ Add exercise") { showPicker = true }
                         .font(.subheadline.weight(.semibold))
