@@ -9,7 +9,6 @@ struct ActiveWorkoutView: View {
     @State private var showFinish = false
     @State private var showPicker = false
     @State private var showOptions = false
-    @State private var showRestForAll = false
     @State private var showDiscardConfirm = false
     @State private var showStalePrompt = false
     @State private var historyExercise: ExerciseHistory?
@@ -203,16 +202,8 @@ struct ActiveWorkoutView: View {
             .padding(.trailing, 2)
             .confirmationDialog("Workout options", isPresented: $showOptions) {
                 Button("Add Exercise") { showPicker = true }
-                Button("Rest Timer for All Exercises…") { showRestForAll = true }
                 Button("Discard Workout", role: .destructive) { showDiscardConfirm = true }
                 Button("Cancel", role: .cancel) {}
-            }
-            .sheet(isPresented: $showRestForAll) {
-                RestPickerSheet(title: "Rest for All Exercises",
-                                subtitle: "Applies to every exercise here, and to ones you add later. You can still change any single exercise afterward.",
-                                initial: session.workoutDefaultRest ?? session.exercises.first?.restSeconds) { seconds in
-                    session.setRestForAll(seconds: seconds)
-                }
             }
             Button("Finish") { showFinish = true }
                 .font(.subheadline.weight(.semibold))
