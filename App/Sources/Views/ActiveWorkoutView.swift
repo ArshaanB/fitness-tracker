@@ -669,15 +669,9 @@ private struct ExerciseOptionsSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name)
-                    .font(.headline)
-                    .foregroundStyle(Theme.ink)
-                Text("Either way, its sets leave this workout only. Past workouts are untouched.")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(name)
+                .font(.headline)
+                .foregroundStyle(Theme.ink)
             VStack(spacing: 10) {
                 Button {
                     onReplace()
@@ -716,7 +710,7 @@ private struct ExerciseOptionsSheet: View {
         .padding(.horizontal, 22)
         .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(252)])
+        .presentationDetents([.height(216)])
         .presentationBackground(Color(red: 245 / 255, green: 247 / 255, blue: 251 / 255))
     }
 }
