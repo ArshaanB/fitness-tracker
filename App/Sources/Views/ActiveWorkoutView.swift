@@ -4,7 +4,6 @@ import SwiftUI
 struct ActiveWorkoutView: View {
     @Environment(AppModel.self) private var model
     @Environment(WorkoutSessionModel.self) private var session
-    @Environment(\.dismiss) private var dismiss
 
     @State private var showFinish = false
     @State private var showPicker = false
@@ -31,7 +30,9 @@ struct ActiveWorkoutView: View {
                         }
                         .onEnded { value in
                             if dragOffset > 130 || value.predictedEndTranslation.height > 350 {
-                                session.isPresented = false
+                                withAnimation(.spring(duration: 0.35)) {
+                                    session.isPresented = false
+                                }
                             } else {
                                 withAnimation(.spring(duration: 0.35)) { dragOffset = 0 }
                             }
@@ -93,9 +94,10 @@ struct ActiveWorkoutView: View {
                     .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: dragOffset > 0 ? 28 : 0, style: .continuous))
         .offset(y: dragOffset)
         .animation(.spring(duration: 0.35), value: session.rest?.endDate)
-        .sheet(isPresented: $showFinish) { FinishSheet(dismissWorkout: { dismiss() }) }
+        .sheet(isPresented: $showFinish) { FinishSheet(dismissWorkout: { session.isPresented = false }) }
         .sheet(item: $historyExercise) { exercise in
             NavigationStack {
                 ExerciseDetailView(exercise: exercise)
@@ -122,7 +124,7 @@ struct ActiveWorkoutView: View {
             Button("Discard", role: .destructive) {
                 session.discard()
                 model.refresh()
-                dismiss()
+                session.isPresented = false
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -134,7 +136,7 @@ struct ActiveWorkoutView: View {
             Button("Discard it", role: .destructive) {
                 session.discard()
                 model.refresh()
-                dismiss()
+                session.isPresented = false
             }
             Button("Keep going", role: .cancel) {
                 if let id = session.workoutId {
@@ -161,7 +163,7 @@ struct ActiveWorkoutView: View {
                     do { try await Task.sleep(for: .seconds(3)) } catch { return }
                     session.finish()
                     model.refresh()
-                    dismiss()
+                    session.isPresented = false
                 }
             }
             #endif
