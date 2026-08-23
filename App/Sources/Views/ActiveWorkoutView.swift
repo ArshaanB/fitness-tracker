@@ -454,38 +454,48 @@ private struct SetRow: View {
     /// Swipe actions: how far the row is dragged left; -trayWidth is "open".
     @State private var swipeOffset: CGFloat = 0
     @State private var showSetRest = false
+    /// Axis decided once per gesture. The old per-frame dominance check froze
+    /// the row whenever a drag went momentarily diagonal — that was the jank.
+    @State private var dragLockedHorizontal: Bool?
 
     /// Width of the revealed swipe-action tray (timer + delete).
     private static let trayWidth: CGFloat = 128
+    /// Dragged past this, releasing deletes the set (Mail-style full swipe).
+    private static let deleteDistance: CGFloat = 210
+
+    private var inFullSwipe: Bool { swipeOffset < -Self.deleteDistance }
 
     var body: some View {
         ZStack(alignment: .trailing) {
             // Actions sit behind the row and are progressively uncovered as
             // it slides; the container clips so nothing spills out of the card.
             HStack(spacing: 6) {
-                Button {
-                    withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
-                    showSetRest = true
-                } label: {
-                    Image(systemName: "timer")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 58)
-                        .frame(maxHeight: .infinity)
-                        .background(set.restSeconds != nil ? Theme.accent : Theme.inkSecondary,
-                                    in: RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Rest timer for set \(set.position)")
-                Button {
-                    withAnimation(.spring(duration: 0.3)) {
-                        session.deleteSet(exerciseId: exercise.id, setId: set.id)
+                if !inFullSwipe {
+                    Button {
+                        withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
+                        showSetRest = true
+                    } label: {
+                        Image(systemName: "timer")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 58)
+                            .frame(maxHeight: .infinity)
+                            .background(set.restSeconds != nil ? Theme.accent : Theme.inkSecondary,
+                                        in: RoundedRectangle(cornerRadius: 10))
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Rest timer for set \(set.position)")
+                    .transition(.opacity)
+                }
+                Button {
+                    deleteSet()
                 } label: {
+                    // Past the full-swipe point the trash grows to fill the
+                    // whole revealed width — the cue that release will delete.
                     Image(systemName: "trash.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 58)
+                        .frame(width: inFullSwipe ? max(58, -swipeOffset - 6) : 58)
                         .frame(maxHeight: .infinity)
                         .background(Theme.ringLow, in: RoundedRectangle(cornerRadius: 10))
                 }
@@ -493,6 +503,7 @@ private struct SetRow: View {
                 .accessibilityLabel("Delete set \(set.position)")
             }
             .opacity(min(1, -swipeOffset / 50))
+            .animation(.spring(duration: 0.22), value: inFullSwipe)
 
             rowContent
                 .offset(x: swipeOffset)
@@ -502,18 +513,26 @@ private struct SetRow: View {
         .gesture(
             DragGesture(minimumDistance: 12)
                 .onChanged { value in
-                    // Horizontal-dominant drags only; leave scrolling alone.
-                    guard abs(value.translation.width) > abs(value.translation.height)
-                    else { return }
-                    let open = Self.trayWidth
-                    let base = value.translation.width + (swipeOffset < 0 ? -open : 0)
-                    // Rubber-band past the open position instead of hard-stopping.
-                    let raw = min(0, base)
-                    swipeOffset = raw < -open ? -open + (raw + open) / 3 : raw
+                    // Lock the axis on the first movement and keep it for the
+                    // whole gesture: horizontal follows the finger 1:1,
+                    // vertical is left entirely to the scroll view.
+                    if dragLockedHorizontal == nil {
+                        dragLockedHorizontal =
+                            abs(value.translation.width) > abs(value.translation.height)
+                    }
+                    guard dragLockedHorizontal == true else { return }
+                    let base = value.translation.width + (swipeOffset < 0 ? -Self.trayWidth : 0)
+                    swipeOffset = min(0, base)
                 }
                 .onEnded { _ in
-                    withAnimation(.spring(duration: 0.28, bounce: 0.15)) {
-                        swipeOffset = swipeOffset < -Self.trayWidth / 2 ? -Self.trayWidth : 0
+                    defer { dragLockedHorizontal = nil }
+                    guard dragLockedHorizontal == true else { return }
+                    if inFullSwipe {
+                        deleteSet()
+                    } else {
+                        withAnimation(.spring(duration: 0.28, bounce: 0.12)) {
+                            swipeOffset = swipeOffset < -Self.trayWidth / 2 ? -Self.trayWidth : 0
+                        }
                     }
                 })
         .onTapGesture {
@@ -527,6 +546,12 @@ private struct SetRow: View {
                             initial: set.restSeconds ?? exercise.restSeconds) { seconds in
                 session.setSetRest(exerciseId: exercise.id, setId: set.id, seconds: seconds)
             }
+        }
+    }
+
+    private func deleteSet() {
+        withAnimation(.spring(duration: 0.3)) {
+            session.deleteSet(exerciseId: exercise.id, setId: set.id)
         }
     }
 
