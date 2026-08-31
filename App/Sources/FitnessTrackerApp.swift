@@ -80,43 +80,39 @@ struct RootTabView: View {
     }()
 
     var body: some View {
-        ZStack {
-            TabView(selection: $selection) {
-                HistoryView()
-                    .tabItem { Label("History", systemImage: "clock") }
-                    .tag(Tab.history)
-                WorkoutTabView()
-                    .tabItem { Label("Workout", systemImage: "dumbbell") }
-                    .tag(Tab.workout)
-                ExercisesView()
-                    .tabItem { Label("Exercises", systemImage: "list.bullet") }
-                    .tag(Tab.exercises)
-                ProfileView()
-                    .tabItem { Label("Profile", systemImage: "person") }
-                    .tag(Tab.profile)
-            }
-            // Minimized live session: floating bar above the tab bar.
-            .overlay(alignment: .bottom) {
-                if session.isActive && !session.isPresented {
-                    MiniWorkoutBar { session.isPresented = true }
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 56)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-
-            // The workout is an overlay in OUR view tree, not a fullScreenCover:
-            // a cover is an opaque separate layer, so dragging it down exposed a
-            // blank white backing and stuttered against the system's presentation.
-            // As an overlay, drag-to-minimize reveals the real app behind it and
-            // we own the whole animation.
-            if session.isPresented {
-                ActiveWorkoutView()
-                    .zIndex(2)
-                    .transition(.move(edge: .bottom))
+        @Bindable var session = session
+        TabView(selection: $selection) {
+            HistoryView()
+                .tabItem { Label("History", systemImage: "clock") }
+                .tag(Tab.history)
+            WorkoutTabView()
+                .tabItem { Label("Workout", systemImage: "dumbbell") }
+                .tag(Tab.workout)
+            ExercisesView()
+                .tabItem { Label("Exercises", systemImage: "list.bullet") }
+                .tag(Tab.exercises)
+            ProfileView()
+                .tabItem { Label("Profile", systemImage: "person") }
+                .tag(Tab.profile)
+        }
+        // Minimized live session: floating bar above the tab bar.
+        .overlay(alignment: .bottom) {
+            if session.isActive && !session.isPresented {
+                MiniWorkoutBar { session.isPresented = true }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 56)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.spring(duration: 0.38), value: session.isPresented)
+        .animation(.spring(duration: 0.35), value: session.isPresented)
+        // The workout is a native sheet: UISheetPresentationController drives
+        // drag-to-minimize, so the interaction is system-rendered — smooth,
+        // interruptible, and correct with scroll views — instead of a
+        // hand-animated offset (which stuttered and fought the gesture).
+        .sheet(isPresented: $session.isPresented) {
+            ActiveWorkoutView()
+                .presentationDragIndicator(.visible)
+        }
     }
 }
 
