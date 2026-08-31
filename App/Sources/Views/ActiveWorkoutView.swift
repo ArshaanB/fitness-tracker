@@ -524,9 +524,20 @@ private struct SetRow: View {
         }
     }
 
+    /// Mail's delete is two phases: the row first slides fully off-screen,
+    /// THEN it leaves the model so the gap animates closed. Removing it in one
+    /// step just blinks the row away.
     private func deleteSet() {
-        withAnimation(.spring(duration: 0.3)) {
-            session.deleteSet(exerciseId: exercise.id, setId: set.id)
+        withAnimation(.easeIn(duration: 0.2)) {
+            swipeOffset = -UIScreen.main.bounds.width
+        }
+        let exerciseId = exercise.id
+        let setId = set.id
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(200))
+            withAnimation(.spring(duration: 0.32)) {
+                session.deleteSet(exerciseId: exerciseId, setId: setId)
+            }
         }
     }
 
