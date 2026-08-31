@@ -163,11 +163,13 @@ struct ActiveWorkoutView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Minimize workout")
             VStack(alignment: .leading, spacing: 4) {
+                // One line always: a wrapped title makes the whole header tall
+                // and crowds the sheet's grab handle.
                 Text(session.name)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 ElapsedChip(since: session.startedAt)
             }
             Spacer()
@@ -201,7 +203,8 @@ struct ActiveWorkoutView: View {
                 .shadow(color: Theme.accent.opacity(0.3), radius: 6, y: 2)
         }
         .padding(.horizontal, 18)
-        .padding(.top, 12)
+        // Breathing room below the sheet's grab handle.
+        .padding(.top, 22)
         .padding(.bottom, 10)
     }
 
