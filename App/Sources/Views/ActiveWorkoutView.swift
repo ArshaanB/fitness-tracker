@@ -435,6 +435,11 @@ private struct SetRow: View {
     /// Axis decided once per gesture. The old per-frame dominance check froze
     /// the row whenever a drag went momentarily diagonal — that was the jank.
     @State private var dragLockedHorizontal: Bool?
+    /// Offset captured when the gesture starts. Anchoring each frame to THIS
+    /// (not the live swipeOffset, which the gesture itself mutates) is what
+    /// makes the row track the finger 1:1 instead of teleporting a tray-width
+    /// on the second frame.
+    @State private var dragStartOffset: CGFloat = 0
 
     /// Width of the revealed swipe-action tray (timer + delete).
     private static let trayWidth: CGFloat = 128
@@ -497,10 +502,10 @@ private struct SetRow: View {
                     if dragLockedHorizontal == nil {
                         dragLockedHorizontal =
                             abs(value.translation.width) > abs(value.translation.height)
+                        dragStartOffset = swipeOffset
                     }
                     guard dragLockedHorizontal == true else { return }
-                    let base = value.translation.width + (swipeOffset < 0 ? -Self.trayWidth : 0)
-                    swipeOffset = min(0, base)
+                    swipeOffset = min(0, dragStartOffset + value.translation.width)
                 }
                 .onEnded { _ in
                     defer { dragLockedHorizontal = nil }
