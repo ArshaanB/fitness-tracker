@@ -437,15 +437,9 @@ final class WorkoutSessionModel {
         expandedExerciseIds.insert(itemId)
     }
 
-    /// Commits a drag-reorder: moves the exercise `delta` slots and persists
-    /// the new positions.
-    func moveExercise(id: String, by delta: Int) {
-        guard delta != 0,
-              let from = exercises.firstIndex(where: { $0.id == id }) else { return }
-        let to = max(0, min(exercises.count - 1, from + delta))
-        guard to != from else { return }
-        let moved = exercises.remove(at: from)
-        exercises.insert(moved, at: to)
+    /// List .onMove commit: reorder, renumber, persist.
+    func moveExercises(fromOffsets source: IndexSet, toOffset destination: Int) {
+        exercises.move(fromOffsets: source, toOffset: destination)
         guard let db else { return }
         var changed: [(id: String, position: Int)] = []
         for i in exercises.indices where exercises[i].position != i + 1 {

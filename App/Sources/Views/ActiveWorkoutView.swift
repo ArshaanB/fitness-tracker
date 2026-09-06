@@ -11,63 +11,44 @@ struct ActiveWorkoutView: View {
     @State private var showDiscardConfirm = false
     @State private var showStalePrompt = false
     @State private var historyExercise: ExerciseHistory?
-    // Long-press-drag reorder. The system onDrag/onDrop API is built for
-    // cross-app data transfer — slow lift, ghost previews, stuck highlights —
-    // so reordering is a plain gesture instead: the lifted card rides the
-    // finger, siblings slide aside live, and the array commits on release.
-    @State private var cardFrames: [String: CGRect] = [:]
-    @State private var reorderingId: String?
-    @State private var reorderTranslation: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
             header
             progressBar
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(session.exercises) { exercise in
-                        let isLifted = reorderingId == exercise.id
-                        ExerciseSessionCard(exercise: exercise) {
-                            historyExercise = model.exercises.first { $0.id == exercise.exerciseId }
-                        } onReorderStart: {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            reorderTranslation = 0
-                            reorderingId = exercise.id
-                        } onReorderMove: { translation in
-                            reorderTranslation = translation
-                        } onReorderEnd: {
-                            commitReorder()
-                        }
-                        .background {
-                            GeometryReader { geo in
-                                Color.clear.preference(key: CardFramesKey.self,
-                                                       value: [exercise.id: geo.frame(in: .named("workoutCards"))])
-                            }
-                        }
-                        .offset(y: isLifted ? reorderTranslation : reorderShift(for: exercise.id))
-                        .scaleEffect(isLifted ? 1.03 : 1)
-                        .shadow(color: Theme.ink.opacity(isLifted ? 0.18 : 0), radius: 14, y: 6)
-                        .zIndex(isLifted ? 2 : 0)
-                        .animation(isLifted ? nil : .spring(duration: 0.28),
-                                   value: reorderShift(for: exercise.id))
-                        .animation(.spring(duration: 0.2), value: isLifted)
+            // A native List, purely for its reorder machinery: .onMove runs
+            // UIKit's collection-view drag under the hood — system lift,
+            // smooth sibling sliding, haptics, and edge auto-scroll — none of
+            // which a hand-rolled per-frame gesture reproduces without jitter.
+            List {
+                ForEach(session.exercises) { exercise in
+                    ExerciseSessionCard(exercise: exercise) {
+                        historyExercise = model.exercises.first { $0.id == exercise.exerciseId }
                     }
-                    Button("+ Add exercise") { showPicker = true }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                        .padding(.vertical, 10)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 120)
-                .coordinateSpace(name: "workoutCards")
-                .onPreferenceChange(CardFramesKey.self) { cardFrames = $0 }
+                .onMove { source, destination in
+                    session.moveExercises(fromOffsets: source, toOffset: destination)
+                }
+
+                Button("+ Add exercise") { showPicker = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .moveDisabled(true)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.top, 6, for: .scrollContent)
+            .contentMargins(.bottom, 110, for: .scrollContent)
             // Mid-gym one-handed use: drag the sheet down to tuck the keyboard
             // away instead of hunting for a lone tappable gap.
             .scrollDismissesKeyboard(.interactively)
-            // The reorder drag and the scroll view must not fight over the finger.
-            .scrollDisabled(reorderingId != nil)
         }
         .appBackground()
         .overlay(alignment: .bottom) {
@@ -153,35 +134,6 @@ struct ActiveWorkoutView: View {
         }
         // A dense in-gym grid: cap text scaling rather than break the layout.
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-    }
-
-    // MARK: - Reorder geometry
-
-    /// How far a NON-lifted card slides aside: once the lifted card's midpoint
-    /// crosses this card's midpoint, it steps one lifted-card-height (plus
-    /// spacing) toward the vacated slot. Frames stay stable during the drag
-    /// because the array itself only reorders on release.
-    private func reorderShift(for id: String) -> CGFloat {
-        guard let dragId = reorderingId, dragId != id,
-              let dragFrame = cardFrames[dragId],
-              let frame = cardFrames[id] else { return 0 }
-        let liftedMidY = dragFrame.midY + reorderTranslation
-        let step = dragFrame.height + 10
-        if frame.midY > dragFrame.midY && frame.midY < liftedMidY { return -step }
-        if frame.midY < dragFrame.midY && frame.midY > liftedMidY { return step }
-        return 0
-    }
-
-    private func commitReorder() {
-        guard let dragId = reorderingId else { return }
-        // The lifted card lands as many slots away as cards it displaced.
-        let down = session.exercises.filter { reorderShift(for: $0.id) < 0 }.count
-        let up = session.exercises.filter { reorderShift(for: $0.id) > 0 }.count
-        withAnimation(.spring(duration: 0.3)) {
-            session.moveExercise(id: dragId, by: down - up)
-            reorderingId = nil
-            reorderTranslation = 0
-        }
     }
 
     private var header: some View {
@@ -293,9 +245,6 @@ private struct ExerciseSessionCard: View {
     @Environment(WorkoutSessionModel.self) private var session
     let exercise: WorkoutSessionModel.SessionExercise
     let onShowHistory: () -> Void
-    let onReorderStart: () -> Void
-    let onReorderMove: (CGFloat) -> Void
-    let onReorderEnd: () -> Void
 
     @State private var showRemoveConfirm = false
     @State private var showReplacePicker = false
@@ -355,25 +304,6 @@ private struct ExerciseSessionCard: View {
                     }
                 }
             }
-            // Hold the header ~a third of a second, then drag to reorder.
-            // Quick taps still expand/collapse; the sequence only arms after
-            // the long press completes (with a haptic thunk).
-            .gesture(
-                LongPressGesture(minimumDuration: 0.3)
-                    .sequenced(before: DragGesture(minimumDistance: 0))
-                    .onChanged { value in
-                        switch value {
-                        case .second(true, let drag):
-                            if let drag {
-                                onReorderMove(drag.translation.height)
-                            } else {
-                                onReorderStart()
-                            }
-                        default:
-                            break
-                        }
-                    }
-                    .onEnded { _ in onReorderEnd() })
             .sheet(isPresented: $showRemoveConfirm, onDismiss: {
                 // Present the picker only after the options sheet is fully
                 // gone; stacking the two mid-transition drops the second.
@@ -765,15 +695,6 @@ private struct ExerciseOptionsSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .presentationDetents([.height(216)])
         .presentationBackground(Color(red: 245 / 255, green: 247 / 255, blue: 251 / 255))
-    }
-}
-
-/// Card frames in the workout list's coordinate space, keyed by exercise id;
-/// the reorder gesture uses them to know when the lifted card passes a sibling.
-private struct CardFramesKey: PreferenceKey {
-    static var defaultValue: [String: CGRect] { [:] }
-    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
-        value.merge(nextValue()) { _, new in new }
     }
 }
 
