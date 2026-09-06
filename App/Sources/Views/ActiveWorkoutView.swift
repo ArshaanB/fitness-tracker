@@ -25,9 +25,22 @@ struct ActiveWorkoutView: View {
                     ExerciseSessionCard(exercise: exercise) {
                         historyExercise = model.exercises.first { $0.id == exercise.exerciseId }
                     }
+                    // Collapse everything the moment a reorder lift starts:
+                    // uniform compact rows stop the hover swap from
+                    // flip-flopping (the endless-vibration bug) and keep the
+                    // lifted platter card-sized.
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.35)
+                            .onEnded { _ in
+                                withAnimation(.spring(duration: 0.25)) {
+                                    session.expandedExerciseIds = []
+                                }
+                            })
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
+                    // Zero insets so the drag platter hugs the card; margins
+                    // and spacing come from the list itself instead.
+                    .listRowInsets(EdgeInsets())
                 }
                 .onMove { source, destination in
                     session.moveExercises(fromOffsets: source, toOffset: destination)
@@ -40,10 +53,13 @@ struct ActiveWorkoutView: View {
                     .padding(.vertical, 10)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
                     .moveDisabled(true)
             }
             .listStyle(.plain)
+            .listRowSpacing(10)
             .scrollContentBackground(.hidden)
+            .contentMargins(.horizontal, 14, for: .scrollContent)
             .contentMargins(.top, 6, for: .scrollContent)
             .contentMargins(.bottom, 110, for: .scrollContent)
             // Mid-gym one-handed use: drag the sheet down to tuck the keyboard
