@@ -437,12 +437,13 @@ final class WorkoutSessionModel {
         expandedExerciseIds.insert(itemId)
     }
 
-    /// Live reorder while a card is dragged over another; persists immediately
-    /// so the order survives however the drag ends.
-    func reorderExercise(draggedId: String, over targetId: String) {
-        guard draggedId != targetId,
-              let from = exercises.firstIndex(where: { $0.id == draggedId }),
-              let to = exercises.firstIndex(where: { $0.id == targetId }) else { return }
+    /// Commits a drag-reorder: moves the exercise `delta` slots and persists
+    /// the new positions.
+    func moveExercise(id: String, by delta: Int) {
+        guard delta != 0,
+              let from = exercises.firstIndex(where: { $0.id == id }) else { return }
+        let to = max(0, min(exercises.count - 1, from + delta))
+        guard to != from else { return }
         let moved = exercises.remove(at: from)
         exercises.insert(moved, at: to)
         guard let db else { return }
