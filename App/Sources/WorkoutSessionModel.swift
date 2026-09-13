@@ -44,6 +44,9 @@ final class WorkoutSessionModel {
         var exerciseName: String
         var endDate: Date
         var totalSeconds: Int
+        /// "Incline Bench Press set 2 · 155 lbs × 3" — what to do when rest
+        /// ends, shown in the pill and the notification.
+        var nextText: String?
     }
 
     struct FinishPR: Identifiable {
@@ -461,9 +464,28 @@ final class WorkoutSessionModel {
         guard let seconds = set.restSeconds ?? exercise.restSeconds, seconds > 0 else { return }
         rest = RestState(exerciseName: exercise.name,
                          endDate: Date().addingTimeInterval(TimeInterval(seconds)),
-                         totalSeconds: seconds)
+                         totalSeconds: seconds,
+                         nextText: nextSetText(startingAt: exercise.id))
         persistRestTimer()
         scheduleRestNotification()
+    }
+
+    /// The first uncompleted set, scanning from the current exercise forward
+    /// (then wrapping to skipped-over exercises), formatted for display.
+    private func nextSetText(startingAt exerciseId: String) -> String? {
+        guard let start = exercises.firstIndex(where: { $0.id == exerciseId }) else { return nil }
+        let ordered = Array(exercises[start...]) + Array(exercises[..<start])
+        for exercise in ordered {
+            guard let next = exercise.sets.first(where: { !$0.completed }) else { continue }
+            var text = next.isWarmup ? "\(exercise.name) warm-up" : "\(exercise.name) set \(next.position)"
+            if let weight = next.weight, weight > 0, let reps = next.reps {
+                text += " · \(Format.weight(weight)) \(Format.unitLabel) × \(reps)"
+            } else if let reps = next.reps {
+                text += " · \(reps) reps"
+            }
+            return text
+        }
+        return nil
     }
 
     /// The rest timer survives app termination like the rest of the session.
@@ -472,9 +494,11 @@ final class WorkoutSessionModel {
         if let rest {
             defaults.set(rest.endDate, forKey: "restEndDate")
             defaults.set(rest.totalSeconds, forKey: "restTotalSeconds")
+            defaults.set(rest.nextText, forKey: "restNextText")
         } else {
             defaults.removeObject(forKey: "restEndDate")
             defaults.removeObject(forKey: "restTotalSeconds")
+            defaults.removeObject(forKey: "restNextText")
         }
     }
 
@@ -486,7 +510,8 @@ final class WorkoutSessionModel {
         }
         rest = RestState(exerciseName: "",
                          endDate: end,
-                         totalSeconds: max(defaults.integer(forKey: "restTotalSeconds"), 1))
+                         totalSeconds: max(defaults.integer(forKey: "restTotalSeconds"), 1),
+                         nextText: defaults.string(forKey: "restNextText"))
     }
 
     func adjustRest(by delta: Int) {
@@ -519,7 +544,7 @@ final class WorkoutSessionModel {
         center.removePendingNotificationRequests(withIdentifiers: ["rest"])
         let content = UNMutableNotificationContent()
         content.title = "Rest over"
-        content.body = "Back to \(rest.exerciseName)"
+        content.body = rest.nextText.map { "Up next: \($0)" } ?? "Back to \(rest.exerciseName)"
         // Bundled chime: longer and near-full amplitude — the default
         // tri-tone was too easy to miss on a gym floor.
         content.sound = UNNotificationSound(named: UNNotificationSoundName("rest_done.caf"))

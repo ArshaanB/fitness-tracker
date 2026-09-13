@@ -839,6 +839,14 @@ private struct RestPill: View {
                             .padding(.vertical, 8)
                             .background(Theme.accent, in: Capsule())
                     }
+                    if let next = rest.nextText {
+                        Text("Next: \(next)")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.75))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
                             Capsule().fill(.white.opacity(0.15))
