@@ -520,7 +520,9 @@ final class WorkoutSessionModel {
         let content = UNMutableNotificationContent()
         content.title = "Rest over"
         content.body = "Back to \(rest.exerciseName)"
-        content.sound = .default
+        // Bundled chime: longer and near-full amplitude — the default
+        // tri-tone was too easy to miss on a gym floor.
+        content.sound = UNNotificationSound(named: UNNotificationSoundName("rest_done.caf"))
         // Time-sensitive so the alert breaks through Focus/DND mid-workout —
         // a silently-delivered rest timer defeats its purpose. Requires the
         // matching entitlement (project.yml), and the user can still turn

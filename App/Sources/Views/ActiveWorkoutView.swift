@@ -1,5 +1,24 @@
+import AudioToolbox
 import FitnessKit
 import SwiftUI
+
+/// The rest-done chime, shared by the in-app timer and the notification (the
+/// notification only sounds in the background, so the app plays it itself
+/// when the timer finishes on screen). Respects the silent switch.
+enum RestChime {
+    private static let soundID: SystemSoundID = {
+        var id: SystemSoundID = 0
+        if let url = Bundle.main.url(forResource: "rest_done", withExtension: "caf") {
+            AudioServicesCreateSystemSoundID(url as CFURL, &id)
+        }
+        return id
+    }()
+
+    static func play() {
+        AudioServicesPlaySystemSound(soundID)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+}
 
 struct ActiveWorkoutView: View {
     @Environment(AppModel.self) private var model
@@ -842,6 +861,9 @@ private struct RestPill: View {
                     // ±10s restarts this task via the id change; the cancelled
                     // instance must not tear the pill down on its way out.
                     if !Task.isCancelled {
+                        // The timer ran out on screen: chime here, since the
+                        // scheduled notification stays silent in-foreground.
+                        RestChime.play()
                         session.clearRest()
                     }
                 }

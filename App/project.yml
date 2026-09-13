@@ -16,6 +16,8 @@ targets:
     sources:
       - path: Sources
       - path: Assets.xcassets
+      - path: Resources
+        buildPhase: resources
       # Dev convenience: bundle the (gitignored) real export so the simulator
       # seeds itself. Optional — builds fine on machines without it.
       - path: ../data/strong_workouts.csv
