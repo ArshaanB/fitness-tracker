@@ -195,6 +195,22 @@ private func insertSet(itemId: String, position: Int, isWarmup: Bool = false,
     }
 }
 
+@Suite struct WorkoutMetaEditTests {
+    @Test func updateWorkoutMetaRewritesNameAndTiming() throws {
+        let db = try AppDatabase.inMemory()
+        let id = try insertWorkout(name: "Old", startedAt: t0, finishedAt: date(1_750_003_600), in: db)
+
+        let newStart = date(1_750_100_000)
+        try SessionStore.updateWorkoutMeta(id: id, name: "Renamed", startedAt: newStart,
+                                           finishedAt: newStart.addingTimeInterval(45 * 60), in: db)
+
+        let workout = try #require(try db.read { try WorkoutRecord.fetchOne($0, key: id) })
+        #expect(workout.name == "Renamed")
+        #expect(workout.startedAt == newStart)
+        #expect(workout.finishedAt == newStart.addingTimeInterval(45 * 60))
+    }
+}
+
 @Suite struct ItemReorderTests {
     @Test func updateItemPositionsPersistsNewOrder() throws {
         let db = try AppDatabase.inMemory()

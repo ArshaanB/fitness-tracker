@@ -23,8 +23,13 @@ enum RestChime {
 struct ActiveWorkoutView: View {
     @Environment(AppModel.self) private var model
     @Environment(WorkoutSessionModel.self) private var session
+    @Environment(\.dismiss) private var dismiss
 
     @State private var showFinish = false
+    // Editor-only state (history editing).
+    @State private var showDeleteConfirm = false
+    @State private var showTiming = false
+    @State private var nameDraft = ""
     @State private var showPicker = false
     @State private var showOptions = false
     @State private var showDiscardConfirm = false
@@ -34,7 +39,9 @@ struct ActiveWorkoutView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            progressBar
+            if !session.isEditor {
+                progressBar
+            }
             // A native List, purely for its reorder machinery: .onMove runs
             // UIKit's collection-view drag under the hood — system lift,
             // smooth sibling sliding, haptics, and edge auto-scroll — none of
@@ -149,7 +156,8 @@ struct ActiveWorkoutView: View {
             // Ask once per session about staleness; "Keep going" shouldn't
             // re-prompt on every reopen.
             let dismissKey = "staleDismissed-\(session.workoutId ?? "")"
-            if session.isStale && !UserDefaults.standard.bool(forKey: dismissKey) {
+            nameDraft = session.name
+            if !session.isEditor, session.isStale, !UserDefaults.standard.bool(forKey: dismissKey) {
                 showStalePrompt = true
             }
             #if DEBUG
@@ -171,10 +179,20 @@ struct ActiveWorkoutView: View {
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 
+    /// Live session: minimize to the mini bar. Editor: the sheet is owned by
+    /// whoever presented it, so plain dismiss.
+    private func close() {
+        if session.isEditor {
+            dismiss()
+        } else {
+            session.isPresented = false
+        }
+    }
+
     private var header: some View {
         HStack(alignment: .center) {
             Button {
-                session.isPresented = false
+                close()
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.footnote.weight(.bold))
@@ -187,18 +205,58 @@ struct ActiveWorkoutView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Minimize workout")
             VStack(alignment: .leading, spacing: 4) {
-                // One line always: a wrapped title makes the whole header tall
-                // and crowds the sheet's grab handle.
-                Text(session.name)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                ElapsedChip(since: session.startedAt)
+                if session.isEditor {
+                    // Editing history: the title is a text field, the clock
+                    // chip becomes a tappable date/duration.
+                    TextField("Workout name", text: $nameDraft)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                        .submitLabel(.done)
+                        .onChange(of: nameDraft) { _, new in session.rename(new) }
+                        // A rejected rename reverts the model; keep the field honest.
+                        .onChange(of: session.name) { _, new in
+                            if nameDraft != new { nameDraft = new }
+                        }
+                    Button {
+                        showTiming = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "calendar")
+                            Text(session.startedAt.formatted(.dateTime.month(.abbreviated).day()))
+                            Text(session.startedAt.formatted(.dateTime.hour().minute()))
+                            Text("·")
+                            Text(Format.duration(session.durationSeconds))
+                                .monospacedDigit()
+                        }
+                        .lineLimit(1)
+                        .fixedSize()
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(Theme.accent.opacity(0.09), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showTiming) {
+                        WorkoutTimingSheet(startedAt: session.startedAt,
+                                           durationSeconds: session.durationSeconds) { start, duration in
+                            session.setTiming(startedAt: start, durationSeconds: duration)
+                        }
+                    }
+                } else {
+                    // One line always: a wrapped title makes the whole header
+                    // tall and crowds the sheet's grab handle.
+                    Text(session.name)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    ElapsedChip(since: session.startedAt)
+                }
             }
             Spacer()
-            IntensityRing(ratio: session.sessionIntensity, size: 34,
-                          isRecord: session.sessionIsRecord)
+            IntensityRing(ratio: session.isEditor ? session.completedIntensity : session.sessionIntensity,
+                          size: 34, isRecord: session.sessionIsRecord)
                 .padding(.trailing, 6)
             Button {
                 showOptions = true
@@ -215,10 +273,32 @@ struct ActiveWorkoutView: View {
             .padding(.trailing, 2)
             .confirmationDialog("Workout options", isPresented: $showOptions) {
                 Button("Add Exercise") { showPicker = true }
-                Button("Discard Workout", role: .destructive) { showDiscardConfirm = true }
+                if session.isEditor {
+                    Button("Delete Workout", role: .destructive) { showDeleteConfirm = true }
+                } else {
+                    Button("Discard Workout", role: .destructive) { showDiscardConfirm = true }
+                }
                 Button("Cancel", role: .cancel) {}
             }
-            Button("Finish") { showFinish = true }
+            .alert("Couldn't save", isPresented: .init(
+                get: { session.editError != nil },
+                set: { if !$0 { session.editError = nil } })) {
+                Button("OK") { session.editError = nil }
+            } message: {
+                Text(session.editError ?? "")
+            }
+            .alert("Delete this workout?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    if let id = session.workoutId { model.deleteWorkout(id: id) }
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Every set from \(session.name) will be removed. Records and charts recompute without it.")
+            }
+            Button(session.isEditor ? "Done" : "Finish") {
+                if session.isEditor { close() } else { showFinish = true }
+            }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 18)
@@ -382,6 +462,7 @@ private struct ExerciseSessionCard: View {
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(Theme.accent)
                         Spacer()
+                        if !session.isEditor {
                         Button {
                             showRestPicker = true
                         } label: {
@@ -403,6 +484,7 @@ private struct ExerciseSessionCard: View {
                                 session.setRest(itemId: exercise.id, seconds: seconds)
                             }
                         }
+                        }
                     }
                     .padding(.top, 6)
                     .padding(.bottom, 4)
@@ -416,6 +498,11 @@ private struct ExerciseSessionCard: View {
     }
 
     private var meta: String {
+        if session.isEditor {
+            let working = exercise.sets.filter { !$0.isWarmup }.count
+            let warmups = exercise.sets.count - working
+            return warmups > 0 ? "\(working) sets · \(warmups) warm-up" : "\(working) sets"
+        }
         var parts = ["\(exercise.completedCount) of \(exercise.sets.count) sets"]
         if let rest = exercise.restSeconds {
             parts.append("Rest \(String(format: "%d:%02d", rest / 60, rest % 60))")
@@ -425,14 +512,18 @@ private struct ExerciseSessionCard: View {
 }
 
 private struct SetColumnHeaders: View {
+    @Environment(WorkoutSessionModel.self) private var session
+
     var body: some View {
         HStack(spacing: 6) {
             Text("SET").frame(width: 30)
-            Text("PREVIOUS").frame(maxWidth: .infinity, alignment: .leading)
+            Text(session.isEditor ? "" : "PREVIOUS").frame(maxWidth: .infinity, alignment: .leading)
             Text(Format.unitLabel.uppercased()).frame(width: 74)
             Text("REPS").frame(width: 56)
             Color.clear.frame(width: 28)
-            Color.clear.frame(width: 44)
+            if !session.isEditor {
+                Color.clear.frame(width: 44)
+            }
         }
         .font(.system(size: 10.5, weight: .semibold))
         .kerning(0.5)
@@ -478,21 +569,42 @@ private struct SetRow: View {
             // it slides; the container clips so nothing spills out of the card.
             HStack(spacing: 6) {
                 if !inFullSwipe {
-                    Button {
-                        withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
-                        showSetRest = true
-                    } label: {
-                        Image(systemName: "timer")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 58)
-                            .frame(maxHeight: .infinity)
-                            .background(set.restSeconds != nil ? Theme.accent : Theme.inkSecondary,
-                                        in: RoundedRectangle(cornerRadius: 10))
+                    if session.isEditor {
+                        // Editing history: the tray's second action marks the
+                        // set as a warm-up (excluded from records) or back.
+                        Button {
+                            withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
+                            session.toggleWarmup(exerciseId: exercise.id, setId: set.id)
+                        } label: {
+                            Text("W")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 58)
+                                .frame(maxHeight: .infinity)
+                                .background(set.isWarmup ? Theme.ringMid : Theme.inkSecondary,
+                                            in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(set.isWarmup ? "Mark set \(set.position) as working set"
+                                                         : "Mark set \(set.position) as warm-up")
+                        .transition(.opacity)
+                    } else {
+                        Button {
+                            withAnimation(.spring(duration: 0.25)) { swipeOffset = 0 }
+                            showSetRest = true
+                        } label: {
+                            Image(systemName: "timer")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 58)
+                                .frame(maxHeight: .infinity)
+                                .background(set.restSeconds != nil ? Theme.accent : Theme.inkSecondary,
+                                            in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Rest timer for set \(set.position)")
+                        .transition(.opacity)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Rest timer for set \(set.position)")
-                    .transition(.opacity)
                 }
                 Button {
                     deleteSet()
@@ -603,7 +715,8 @@ private struct SetRow: View {
                 .font(.body.weight(.semibold))
                 .monospacedDigit()
                 .padding(.vertical, 7)
-                .background(set.completed ? .clear : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
+                .background(set.completed && !session.isEditor ? .clear
+                                : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
                             in: RoundedRectangle(cornerRadius: 9))
                 .frame(width: 74)
                 .accessibilityLabel("Weight in \(Format.unitLabel)")
@@ -623,7 +736,8 @@ private struct SetRow: View {
                 .font(.body.weight(.semibold))
                 .monospacedDigit()
                 .padding(.vertical, 7)
-                .background(set.completed ? .clear : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
+                .background(set.completed && !session.isEditor ? .clear
+                                : Color(red: 234 / 255, green: 239 / 255, blue: 247 / 255),
                             in: RoundedRectangle(cornerRadius: 9))
                 .frame(width: 56)
                 .accessibilityLabel("Repetitions")
@@ -635,6 +749,7 @@ private struct SetRow: View {
             IntensityRing(ratio: ratio, size: 24, isRecord: (ratio ?? 0) > 1)
                 .frame(width: 28)
 
+            if !session.isEditor {
             Button {
                 session.toggleComplete(exerciseId: exercise.id, setId: set.id)
             } label: {
@@ -651,10 +766,12 @@ private struct SetRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(set.completed ? "Mark set \(set.position) incomplete"
                                               : "Complete set \(set.position)")
+            }
         }
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
-        .background(set.completed ? Color(red: 237 / 255, green: 249 / 255, blue: 241 / 255) : .clear,
+        .background(set.completed && !session.isEditor
+                        ? Color(red: 237 / 255, green: 249 / 255, blue: 241 / 255) : .clear,
                     in: RoundedRectangle(cornerRadius: 10))
         .onAppear {
             weightText = set.weight.map { Format.weight($0) } ?? ""
@@ -730,6 +847,67 @@ private struct ExerciseOptionsSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .presentationDetents([.height(216)])
         .presentationBackground(Color(red: 245 / 255, green: 247 / 255, blue: 251 / 255))
+    }
+}
+
+/// History editor: when the workout happened and how long it took.
+struct WorkoutTimingSheet: View {
+    let startedAt: Date
+    let durationSeconds: Int
+    let onSave: (Date, Int) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var start = Date()
+    @State private var hours = 1
+    @State private var minutes = 0
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 6) {
+                DatePicker("Started", selection: $start, displayedComponents: [.date, .hourAndMinute])
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 8)
+                Text("DURATION")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .kerning(0.5)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 22)
+                HStack(spacing: 0) {
+                    Picker("Hours", selection: $hours) {
+                        ForEach(0..<13, id: \.self) { Text("\($0) hr").tag($0) }
+                    }
+                    .pickerStyle(.wheel)
+                    Picker("Minutes", selection: $minutes) {
+                        ForEach(0..<60, id: \.self) { Text("\($0) min").tag($0) }
+                    }
+                    .pickerStyle(.wheel)
+                }
+                .frame(height: 150)
+            }
+            .navigationTitle("Date & Duration")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(start, hours * 3600 + minutes * 60)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .onAppear {
+                start = startedAt
+                hours = min(durationSeconds / 3600, 12)
+                minutes = (durationSeconds % 3600) / 60
+            }
+        }
+        .presentationDetents([.height(340)])
     }
 }
 

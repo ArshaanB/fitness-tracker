@@ -5,10 +5,18 @@ struct WorkoutDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(WorkoutSessionModel.self) private var session
     @Environment(\.dismiss) private var dismiss
-    let workout: LoadedWorkout
+    private let initial: LoadedWorkout
+    /// Always the live copy: edits made in the editor sheet show up here the
+    /// moment the model reloads.
+    private var workout: LoadedWorkout { model.workoutsById[initial.id] ?? initial }
+
+    init(workout: LoadedWorkout) {
+        initial = workout
+    }
 
     @State private var showDeleteConfirm = false
     @State private var showReplaceConfirm = false
+    @State private var showEditor = false
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -49,6 +57,11 @@ struct WorkoutDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
+                        showEditor = true
+                    } label: {
+                        Label("Edit Workout", systemImage: "pencil")
+                    }
+                    Button {
                         if session.isActive {
                             showReplaceConfirm = true
                         } else {
@@ -78,6 +91,13 @@ struct WorkoutDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Every set from \(workout.name) will be removed. Records and charts recompute without it.")
+        }
+        .sheet(isPresented: $showEditor, onDismiss: { model.refresh() }) {
+            WorkoutEditorSheet(workoutId: initial.id)
+        }
+        // Deleted from inside the editor: nothing left to show here.
+        .onChange(of: model.isReady && model.workoutsById[initial.id] == nil) { _, gone in
+            if gone { dismiss() }
         }
         .alert("A workout is already in progress.", isPresented: $showReplaceConfirm) {
             Button("Discard It & Start", role: .destructive) { repeatWorkout() }

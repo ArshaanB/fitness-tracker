@@ -7,6 +7,7 @@ struct HistoryView: View {
     @State private var path = NavigationPath()
     /// Workout awaiting "discard the running session?" confirmation.
     @State private var pendingRepeat: LoadedWorkout?
+    @State private var editingWorkout: LoadedWorkout?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -39,9 +40,9 @@ struct HistoryView: View {
                                     // Tap gesture (not NavigationLink) so the
                                     // repeat button inside the card wins taps.
                                     WorkoutCard(workout: workout,
-                                                prCount: model.prCounts[workout.id] ?? 0) {
-                                        repeatTapped(workout)
-                                    }
+                                                prCount: model.prCounts[workout.id] ?? 0,
+                                                onRepeat: { repeatTapped(workout) },
+                                                onEdit: { editingWorkout = workout })
                                     .contentShape(Rectangle())
                                     .onTapGesture { path.append(workout.id) }
                                 }
@@ -64,6 +65,11 @@ struct HistoryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .appBackground()
             .navigationTitle("History")
+            // Records and charts are derived from history, so recompute
+            // whenever the editor closes.
+            .sheet(item: $editingWorkout, onDismiss: { model.refresh() }) { workout in
+                WorkoutEditorSheet(workoutId: workout.id)
+            }
             .alert("A workout is already in progress.", isPresented: .init(
                 get: { pendingRepeat != nil },
                 set: { if !$0 { pendingRepeat = nil } })) {
@@ -87,6 +93,16 @@ struct HistoryView: View {
                 if let id = model.monthSections.first?.workouts.first?.id {
                     path.append(id)
                 }
+            }
+            // Screenshot/test hook: SIMCTL_CHILD_EDIT_WORKOUT=latest opens the
+            // history editor on the newest workout.
+            .task {
+                guard ProcessInfo.processInfo.environment["EDIT_WORKOUT"] == "latest" else { return }
+                while !model.isReady {
+                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                }
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                editingWorkout = model.monthSections.first?.workouts.first
             }
             #endif
         }
@@ -133,6 +149,7 @@ private struct WorkoutCard: View {
     let workout: LoadedWorkout
     let prCount: Int
     let onRepeat: () -> Void
+    let onEdit: () -> Void
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -159,6 +176,15 @@ private struct WorkoutCard: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Repeat \(workout.name)")
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.accent.opacity(0.09), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit \(workout.name)")
             }
             Text(Self.dateFormatter.string(from: workout.startedAt))
                 .font(.footnote)

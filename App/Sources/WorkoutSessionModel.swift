@@ -56,9 +56,22 @@ final class WorkoutSessionModel {
         let previousBest: Double?
     }
 
+    /// Editor mode: the same session machinery pointed at a FINISHED workout
+    /// from History. Write-through edits, but no rest timers, no completion
+    /// toggling, no finish/discard — and header fields become editable.
+    let isEditor: Bool
+
+    init(isEditor: Bool = false) {
+        self.isEditor = isEditor
+    }
+
     private(set) var workoutId: String?
     private(set) var name = ""
     private(set) var startedAt = Date()
+    private(set) var finishedAt: Date?
+    var durationSeconds: Int {
+        Int((finishedAt ?? Date()).timeIntervalSince(startedAt))
+    }
     var exercises: [SessionExercise] = []
     var expandedExerciseIds: Set<String> = []
     var rest: RestState?
@@ -218,13 +231,16 @@ final class WorkoutSessionModel {
         workoutId = started.workout.id
         name = started.workout.name
         startedAt = started.workout.startedAt
+        finishedAt = started.workout.finishedAt
         exercises = started.exercises.map { exercise in
             SessionExercise(id: exercise.item.id,
                             exerciseId: exercise.item.exerciseId,
                             name: exerciseNames[exercise.item.exerciseId] ?? "Exercise",
                             position: exercise.item.position,
                             restSeconds: exercise.item.restSeconds,
-                            previous: exercise.previous,
+                            // "Previous" is meaningless when editing history
+                            // (it would often be this very workout).
+                            previous: isEditor ? [] : exercise.previous,
                             sets: exercise.sets.map {
                                 SessionSet(id: $0.id, position: $0.position, isWarmup: $0.isWarmup,
                                            weight: $0.weight, reps: $0.reps, completedAt: $0.completedAt,
@@ -233,12 +249,85 @@ final class WorkoutSessionModel {
                             baselineE1RM: baselines[exercise.item.exerciseId],
                             baselineReps: repBaselines[exercise.item.exerciseId])
         }
+        if isEditor {
+            // Editing: everything open, ready to change.
+            expandedExerciseIds = Set(exercises.map(\.id))
+            return
+        }
         // Open on the first unfinished exercise; the user can expand more.
         if let focus = exercises.first(where: { $0.completedCount < $0.sets.count })?.id
             ?? exercises.first?.id {
             expandedExerciseIds = [focus]
         }
         restoreRestTimer()
+    }
+
+    // MARK: - History editor
+
+    /// Loads a finished workout for editing. Returns false if it no longer exists.
+    @discardableResult
+    func loadForEditing(workoutId id: String,
+                        baselines: [String: Double], repBaselines: [String: Int],
+                        exerciseNames: [String: String]) -> Bool {
+        guard let db, isEditor else { return false }
+        do {
+            guard let started = try SessionStore.resume(workoutId: id, from: db) else { return false }
+            load(started, baselines: baselines, repBaselines: repBaselines,
+                 exerciseNames: exerciseNames)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Set when a header edit could not be saved (shown as an alert).
+    var editError: String?
+
+    func rename(_ newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isEditor, !trimmed.isEmpty, trimmed != name else { return }
+        let previous = name
+        name = trimmed
+        if !persistMeta() { name = previous }
+    }
+
+    /// Moves the workout in time and/or changes how long it lasted.
+    func setTiming(startedAt newStart: Date, durationSeconds: Int) {
+        guard isEditor else { return }
+        let previous = (startedAt, finishedAt)
+        startedAt = newStart
+        finishedAt = newStart.addingTimeInterval(TimeInterval(max(durationSeconds, 60)))
+        if !persistMeta() { (startedAt, finishedAt) = previous }
+    }
+
+    func toggleWarmup(exerciseId: String, setId: String) {
+        guard let e = exercises.firstIndex(where: { $0.id == exerciseId }),
+              let s = exercises[e].sets.firstIndex(where: { $0.id == setId }) else { return }
+        exercises[e].sets[s].isWarmup.toggle()
+        pendingSaves[setId]?.cancel()
+        pendingSaves[setId] = nil
+        persist(exercises[e].sets[s], itemId: exerciseId)
+    }
+
+    /// Returns false (and sets `editError`) when the change can't be saved.
+    /// The one realistic cause: the schema keeps (startedAt, name) unique for
+    /// import de-duplication, so an edit can't collide with another workout.
+    private func persistMeta() -> Bool {
+        guard let db, let workoutId else { return false }
+        do {
+            try SessionStore.updateWorkoutMeta(id: workoutId, name: name, startedAt: startedAt,
+                                               finishedAt: finishedAt, in: db)
+            return true
+        } catch {
+            editError = "Another workout already has this name and start time. Change one of them."
+            return false
+        }
+    }
+
+    /// Sets created while editing history are logged sets, not plans: they
+    /// carry a completion time so finishing logic and stats treat them as real.
+    private var newSetCompletion: Date? {
+        isEditor ? (finishedAt ?? startedAt) : nil
     }
 
     func finishSummary() -> (duration: Int, volume: Double, sets: Int, prs: [FinishPR]) {
@@ -336,7 +425,7 @@ final class WorkoutSessionModel {
         pendingSaves[setId]?.cancel()
         pendingSaves[setId] = nil
         persist(exercises[e].sets[s], itemId: exerciseId)
-        if !wasCompleted {
+        if !wasCompleted && !isEditor {
             startRest(for: exercises[e], after: exercises[e].sets[s])
         }
     }
@@ -349,7 +438,7 @@ final class WorkoutSessionModel {
                              isWarmup: warmup,
                              weight: last?.weight,
                              reps: last?.reps,
-                             completedAt: nil,
+                             completedAt: newSetCompletion,
                              restSeconds: last?.restSeconds)
         exercises[e].sets.append(set)
         persist(set, itemId: exerciseId)
@@ -378,7 +467,8 @@ final class WorkoutSessionModel {
         try? SessionStore.insertItem(item, in: db)
         exercises.append(SessionExercise(id: item.id, exerciseId: exerciseId, name: name,
                                          position: position,
-                                         restSeconds: restSeconds, previous: previous,
+                                         restSeconds: restSeconds,
+                                         previous: isEditor ? [] : previous,
                                          sets: [], baselineE1RM: baseline,
                                          baselineReps: repBaseline))
         // Prefill planned sets from the previous session, exactly like a
@@ -388,7 +478,8 @@ final class WorkoutSessionModel {
         for position in 1...setCount {
             let prev = position <= previous.count ? previous[position - 1] : previous.last
             let set = SessionSet(id: UUID().uuidString, position: position, isWarmup: false,
-                                 weight: prev?.weight, reps: prev?.reps, completedAt: nil)
+                                 weight: prev?.weight, reps: prev?.reps,
+                                 completedAt: newSetCompletion)
             exercises[index].sets.append(set)
             persist(set, itemId: item.id)
         }
@@ -428,13 +519,15 @@ final class WorkoutSessionModel {
         for position in 1...max(previous.count, 1) {
             let prev = position <= previous.count ? previous[position - 1] : previous.last
             let set = SessionSet(id: UUID().uuidString, position: position, isWarmup: false,
-                                 weight: prev?.weight, reps: prev?.reps, completedAt: nil)
+                                 weight: prev?.weight, reps: prev?.reps,
+                                 completedAt: newSetCompletion)
             sets.append(set)
             persist(set, itemId: itemId)
         }
         exercises[index] = SessionExercise(id: itemId, exerciseId: exerciseId, name: name,
                                            position: exercises[index].position,
-                                           restSeconds: restSeconds, previous: previous,
+                                           restSeconds: restSeconds,
+                                           previous: isEditor ? [] : previous,
                                            sets: sets, baselineE1RM: baseline,
                                            baselineReps: repBaseline)
         expandedExerciseIds.insert(itemId)
